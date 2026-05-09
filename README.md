@@ -222,12 +222,15 @@ db.expenses.createIndex({ "user_id": 1, "date": -1, "category": 1 })
 ## 📊 API Endpoints
 
 ### Authentication
-- POST /auth/register - User registration
-- POST /auth/login - User login
-- POST /auth/logout - User logout
+- POST /api/auth/register - User registration (name, email, password, monthly_income)
+- POST /api/auth/login - User login (email, password)
+- POST /api/auth/logout - User logout (stateless acknowledgement)
+- GET /api/auth/profile - Get current user profile
+- PUT /api/auth/profile - Update current user profile (name, monthly_income)
+- POST /api/auth/change-password - Change password with old password verification
 
 ### Expenses
-- GET /api/expenses - Get all user expenses
+- GET /api/expenses - Get all user expenses (pagination and filters)
 - POST /api/expenses - Add new expense
 - GET /api/expenses/<id> - Get specific expense
 - PUT /api/expenses/<id> - Update expense
