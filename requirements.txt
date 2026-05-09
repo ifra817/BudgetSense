@@ -1,8 +1,22 @@
+blinker==1.9.0
+certifi==2026.4.22
+charset-normalizer==3.4.7
+click==8.3.3
+colorama==0.4.6
+dnspython==2.8.0
 Flask==2.3.0
+flask-cors==6.0.2
+idna==3.13
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+packaging==26.2
+pillow==12.2.0
 pymongo==4.3.3
-python-dotenv==1.0.0
-werkzeug==2.3.0
 pytesseract==0.3.10
+python-dotenv==1.0.0
 requests==2.31.0
-# Pillow==8.4.0  # Commented out - requires Visual C++ build tools on Windows
-# Install separately later if needed: pip install Pillow --only-binary :all:
+setuptools==82.0.1
+urllib3==2.7.0
+Werkzeug==2.3.0
+wheel==0.47.0

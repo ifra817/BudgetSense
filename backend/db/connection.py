@@ -61,7 +61,7 @@ class MongoDBConnection:
         except ConnectionFailure as e:
             logger.error(f"❌ MongoDB Connection Failed: {e}")
             return False
-        except ServerSelectionTimeoutError as e:
+        except ServerSelectionTimeoutError as e: # type: ignore
             logger.error(f"❌ MongoDB Server Selection Timeout: {e}")
             return False
         except ValueError as e:
@@ -103,7 +103,7 @@ class MongoDBConnection:
             pymongo collection object
         """
         db = self.get_database()
-        return db[collection_name]
+        return db[collection_name] # type: ignore
 
 # Create singleton instance
 mongodb = MongoDBConnection()
