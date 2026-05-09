@@ -10,34 +10,49 @@ Routes:
 - POST /api/auth/change-password
 
 Authentication for protected routes is done using either:
-- X-User-Id header
-- Authorization: Bearer <user_id>
+- Authorization: Bearer <signed_token>
 """
 
 from datetime import datetime
 
 from bson.objectid import ObjectId
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pymongo.errors import DuplicateKeyError
 
 from db.connection import get_collection
 from models.user import User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+TOKEN_SALT = "budgetsense-auth-token"
 
 
 def _get_users_collection():
     return get_collection("users")
 
 
-def _get_user_id_from_request():
-    header_user_id = request.headers.get("X-User-Id")
-    if header_user_id:
-        return header_user_id.strip()
+def _get_token_serializer():
+    return URLSafeTimedSerializer(current_app.config.get("SECRET_KEY", "dev-secret-key-change-in-production"))
 
+
+def _decode_access_token(token):
+    try:
+        payload = _get_token_serializer().loads(token, salt=TOKEN_SALT, max_age=86400)
+    except (BadSignature, SignatureExpired):
+        return None
+
+    user_id = payload.get("user_id") if isinstance(payload, dict) else None
+    if not user_id:
+        return None
+
+    return str(user_id)
+
+
+def _get_user_id_from_request():
     auth_header = request.headers.get("Authorization", "").strip()
     if auth_header.startswith("Bearer "):
-        return auth_header[7:].strip()
+        token = auth_header[7:].strip()
+        return _decode_access_token(token)
 
     return None
 
@@ -141,8 +156,11 @@ def login():
             "message": "Login successful",
             "user": user.to_dict_public(),
             "auth": {
-                "token_type": "user_id",
-                "access_token": str(user._id),
+                "token_type": "Bearer",
+                "access_token": _get_token_serializer().dumps(
+                    {"user_id": str(user._id)},
+                    salt=TOKEN_SALT,
+                ),
             },
         }
     ), 200

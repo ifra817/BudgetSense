@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from bson.objectid import ObjectId
 from flask import Flask
+from itsdangerous import URLSafeTimedSerializer
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT_DIR / "backend"
@@ -20,9 +21,17 @@ class ApiRoutesTestCase(unittest.TestCase):
     def setUp(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.config["SECRET_KEY"] = "test-secret-key"
         app.register_blueprint(auth_bp)
         app.register_blueprint(expenses_bp)
         self.client = app.test_client()
+
+    def _auth_header(self, user_id):
+        token = URLSafeTimedSerializer("test-secret-key").dumps(
+            {"user_id": str(user_id)},
+            salt="budgetsense-auth-token",
+        )
+        return {"Authorization": f"Bearer {token}"}
 
     @patch("routes.auth.get_collection")
     def test_register_hashes_password(self, mock_get_collection):
@@ -60,7 +69,11 @@ class ApiRoutesTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         body = response.get_json()
-        self.assertEqual(body["auth"]["access_token"], str(existing_user._id))
+        token_payload = URLSafeTimedSerializer("test-secret-key").loads(
+            body["auth"]["access_token"],
+            salt="budgetsense-auth-token",
+        )
+        self.assertEqual(token_payload["user_id"], str(existing_user._id))
 
     @patch("routes.auth.get_collection")
     def test_profile_update_changes_name_and_income(self, mock_get_collection):
@@ -77,7 +90,7 @@ class ApiRoutesTestCase(unittest.TestCase):
 
         response = self.client.put(
             "/api/auth/profile",
-            headers={"X-User-Id": str(user_id)},
+            headers=self._auth_header(user_id),
             json={"name": "Alice Updated", "monthly_income": 7000},
         )
 
@@ -95,7 +108,7 @@ class ApiRoutesTestCase(unittest.TestCase):
 
         response = self.client.post(
             "/api/auth/change-password",
-            headers={"X-User-Id": str(user_id)},
+            headers=self._auth_header(user_id),
             json={"old_password": "wrongpassword", "new_password": "newpassword123"},
         )
 
@@ -113,7 +126,7 @@ class ApiRoutesTestCase(unittest.TestCase):
 
         response = self.client.post(
             "/api/expenses",
-            headers={"X-User-Id": str(user_id)},
+            headers=self._auth_header(user_id),
             json={
                 "title": "Groceries",
                 "category": "Food",
@@ -167,13 +180,101 @@ class ApiRoutesTestCase(unittest.TestCase):
 
         response = self.client.get(
             "/api/expenses?page=1&per_page=10",
-            headers={"X-User-Id": str(user_id)},
+            headers=self._auth_header(user_id),
         )
 
         self.assertEqual(response.status_code, 200)
         body = response.get_json()
         self.assertEqual(body["pagination"]["total"], 1)
         self.assertEqual(len(body["expenses"]), 1)
+
+    @patch("routes.expenses.get_collection")
+    def test_get_expense_by_id_success(self, mock_get_collection):
+        users = MagicMock()
+        expenses = MagicMock()
+        mock_get_collection.side_effect = lambda name: users if name == "users" else expenses
+
+        user_id = ObjectId()
+        expense_id = ObjectId()
+        now = datetime.utcnow()
+        users.find_one.return_value = {"_id": user_id, "name": "Alice"}
+        expenses.find_one.return_value = {
+            "_id": expense_id,
+            "user_id": user_id,
+            "title": "Groceries",
+            "category": "Food",
+            "items": [{"name": "Milk", "quantity": 1, "price": 5}],
+            "date": now,
+            "total_amount": 5,
+            "receipt_image": None,
+            "notes": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+        response = self.client.get(
+            f"/api/expenses/{expense_id}",
+            headers=self._auth_header(user_id),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["expense"]["_id"], str(expense_id))
+
+    @patch("routes.expenses.get_collection")
+    def test_update_expense_success(self, mock_get_collection):
+        users = MagicMock()
+        expenses = MagicMock()
+        mock_get_collection.side_effect = lambda name: users if name == "users" else expenses
+
+        user_id = ObjectId()
+        expense_id = ObjectId()
+        now = datetime.utcnow()
+        users.find_one.return_value = {"_id": user_id, "name": "Alice"}
+        existing_doc = {
+            "_id": expense_id,
+            "user_id": user_id,
+            "title": "Old Title",
+            "category": "Food",
+            "items": [{"name": "Milk", "quantity": 1, "price": 5}],
+            "date": now,
+            "total_amount": 5,
+            "receipt_image": None,
+            "notes": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+        updated_doc = dict(existing_doc)
+        updated_doc["title"] = "New Title"
+        expenses.find_one.side_effect = [existing_doc, updated_doc]
+
+        response = self.client.put(
+            f"/api/expenses/{expense_id}",
+            headers=self._auth_header(user_id),
+            json={"title": "New Title"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["expense"]["title"], "New Title")
+        expenses.update_one.assert_called_once()
+
+    @patch("routes.expenses.get_collection")
+    def test_delete_expense_success(self, mock_get_collection):
+        users = MagicMock()
+        expenses = MagicMock()
+        mock_get_collection.side_effect = lambda name: users if name == "users" else expenses
+
+        user_id = ObjectId()
+        expense_id = ObjectId()
+        users.find_one.return_value = {"_id": user_id, "name": "Alice"}
+        expenses.delete_one.return_value = MagicMock(deleted_count=1)
+
+        response = self.client.delete(
+            f"/api/expenses/{expense_id}",
+            headers=self._auth_header(user_id),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["message"], "Expense deleted successfully")
 
 
 if __name__ == "__main__":
