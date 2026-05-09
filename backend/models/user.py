@@ -27,13 +27,12 @@ class User:
     - Email is stored lowercase for case-insensitive lookups
     - Unique index on email prevents duplicate accounts
     """
-    
-    def __init__(self, name=None, email=None, password=None, monthly_income=0, _id=None):
+    def __init__(self, name=None, email=None, password=None, monthly_income=0.0, _id=None):
         self._id = _id or ObjectId()
         self.name = name
         self.email = email.lower() if email else None  # Store email as lowercase
         self.password = generate_password_hash(password) if password else None
-        self.monthly_income = float(monthly_income) if monthly_income else 0
+        self.monthly_income = float(monthly_income) if monthly_income else 0.0
         self.created_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
     

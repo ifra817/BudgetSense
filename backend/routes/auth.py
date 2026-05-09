@@ -8,13 +8,9 @@ Routes:
 - GET /api/auth/profile
 - PUT /api/auth/profile
 - POST /api/auth/change-password
-
-Authentication for protected routes is done using either:
-- Authorization: Bearer <signed_token>
 """
 
 from datetime import datetime
-
 from bson.objectid import ObjectId
 from flask import Blueprint, jsonify, request
 from pymongo.errors import DuplicateKeyError
@@ -27,10 +23,17 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
 def _get_users_collection():
+    """Get users collection from MongoDB"""
     return get_collection("users")
 
 
 def _get_current_user():
+    """
+    Get current authenticated user from request.
+    
+    Returns:
+        tuple: (User object, None) or (None, error_response)
+    """
     user_id = get_user_id_from_request()
     if not user_id:
         return None, (jsonify({"error": "Authentication required"}), 401)
@@ -47,17 +50,13 @@ def _get_current_user():
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    """
-    Register a new user.
-    Required JSON body: name, email, password
-    Optional JSON body: monthly_income
-    """
+    """Register a new user."""
     data = request.get_json(silent=True) or {}
 
     name = (data.get("name") or "").strip()
     email = (data.get("email") or "").strip().lower()
     password = data.get("password")
-    monthly_income = data.get("monthly_income", 0)
+    monthly_income_value = data.get("monthly_income", 0)
 
     if not name:
         return jsonify({"error": "Name is required"}), 400
@@ -69,8 +68,9 @@ def register():
     if not is_password_valid:
         return jsonify({"error": password_error}), 400
 
+    # Convert monthly_income to float
     try:
-        monthly_income = float(monthly_income)
+        monthly_income = float(monthly_income_value) if monthly_income_value else 0.0
     except (TypeError, ValueError):
         return jsonify({"error": "Monthly income must be a number"}), 400
 
@@ -104,10 +104,7 @@ def register():
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """
-    Log in a user using email and password.
-    Required JSON body: email, password
-    """
+    """Log in a user using email and password."""
     data = request.get_json(silent=True) or {}
 
     email = (data.get("email") or "").strip().lower()
@@ -138,10 +135,7 @@ def login():
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """
-    Log out endpoint for stateless authentication.
-    Clients should clear the stored token on their side.
-    """
+    """Log out endpoint for stateless authentication."""
     return jsonify({"message": "Logout successful"}), 200
 
 
@@ -152,39 +146,51 @@ def get_profile():
     if error_response:
         return error_response
 
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
     return jsonify({"user": user.to_dict_public()}), 200
 
 
 @auth_bp.route("/profile", methods=["PUT"])
 def update_profile():
-    """
-    Update current user profile.
-    Allowed JSON fields: name, monthly_income
-    """
+    """Update current user profile."""
     user, error_response = _get_current_user()
     if error_response:
         return error_response
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
 
     data = request.get_json(silent=True) or {}
 
     if "name" not in data and "monthly_income" not in data:
         return jsonify({"error": "Provide at least one field: name or monthly_income"}), 400
 
-    update_fields = {"updated_at": datetime.utcnow()}
-
+    update_fields: dict = {"updated_at": datetime.utcnow()}  # ← ADD TYPE HINT
+    
+    # Update name if provided
     if "name" in data:
         name = (data.get("name") or "").strip()
         if len(name) < 2:
             return jsonify({"error": "Name must be at least 2 characters"}), 400
         update_fields["name"] = name
 
+    # Update monthly_income if provided
     if "monthly_income" in data:
+        monthly_income_value = data.get("monthly_income")
+        
+        if monthly_income_value is None:
+            return jsonify({"error": "Monthly income cannot be null"}), 400
+        
         try:
-            monthly_income = float(data.get("monthly_income"))
+            monthly_income = float(monthly_income_value)
         except (TypeError, ValueError):
             return jsonify({"error": "Monthly income must be a number"}), 400
+        
         if monthly_income < 0:
             return jsonify({"error": "Monthly income cannot be negative"}), 400
+        
         update_fields["monthly_income"] = monthly_income
 
     users = _get_users_collection()
@@ -207,13 +213,13 @@ def update_profile():
 
 @auth_bp.route("/change-password", methods=["POST"])
 def change_password():
-    """
-    Change current user's password.
-    Required JSON body: old_password, new_password
-    """
+    """Change current user's password."""
     user, error_response = _get_current_user()
     if error_response:
         return error_response
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
 
     data = request.get_json(silent=True) or {}
     old_password = data.get("old_password")
