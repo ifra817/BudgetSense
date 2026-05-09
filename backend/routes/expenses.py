@@ -15,15 +15,13 @@ Authentication for all routes is done using either:
 from datetime import datetime
 
 from bson.objectid import ObjectId
-from flask import Blueprint, current_app, jsonify, request
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from flask import Blueprint, jsonify, request
 
 from db.connection import get_collection
 from models.expense import Expense, ExpenseItem
+from utils.auth import get_user_id_from_request
 
 expenses_bp = Blueprint("expenses", __name__, url_prefix="/api/expenses")
-TOKEN_SALT = "budgetsense-auth-token"
-TOKEN_MAX_AGE_SECONDS = 86400
 
 
 def _get_expenses_collection():
@@ -34,34 +32,8 @@ def _get_users_collection():
     return get_collection("users")
 
 
-def _get_token_serializer():
-    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
-
-
-def _decode_access_token(token):
-    try:
-        payload = _get_token_serializer().loads(token, salt=TOKEN_SALT, max_age=TOKEN_MAX_AGE_SECONDS)
-    except (BadSignature, SignatureExpired):
-        return None
-
-    user_id = payload.get("user_id") if isinstance(payload, dict) else None
-    if not user_id:
-        return None
-
-    return str(user_id)
-
-
-def _get_user_id_from_request():
-    auth_header = request.headers.get("Authorization", "").strip()
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:].strip()
-        return _decode_access_token(token)
-
-    return None
-
-
 def _get_current_user_id():
-    user_id = _get_user_id_from_request()
+    user_id = get_user_id_from_request()
     if not user_id:
         return None, (jsonify({"error": "Authentication required"}), 401)
 
