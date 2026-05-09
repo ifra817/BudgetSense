@@ -237,10 +237,6 @@ def change_password():
     if not user.check_password(old_password):
         return jsonify({"error": "Old password is incorrect"}), 401
 
-    is_valid_password, password_error = User.validate_password(new_password)
-    if not is_valid_password:
-        return jsonify({"error": password_error}), 400
-
     change_success, change_error = user.change_password(new_password)
     if not change_success:
         return jsonify({"error": change_error}), 400

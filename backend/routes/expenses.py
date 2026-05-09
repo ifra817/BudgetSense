@@ -98,6 +98,16 @@ def _parse_items(items_data):
     return items, None
 
 
+def _calculate_total_amount(items):
+    total = 0
+    for item in items:
+        if isinstance(item, ExpenseItem):
+            total += item.get_total()
+        elif isinstance(item, dict):
+            total += item.get("quantity", 1) * item.get("price", 0)
+    return round(total, 2)
+
+
 @expenses_bp.route("", methods=["GET"])
 def get_expenses():
     """
@@ -312,7 +322,7 @@ def update_expense(expense_id):
             return jsonify({"error": items_error}), 400
         expense.items = items
 
-    expense.total_amount = expense._calculate_total()
+    expense.total_amount = _calculate_total_amount(expense.items)
     expense.updated_at = datetime.utcnow()
 
     is_valid, validation_error = expense.validate()
