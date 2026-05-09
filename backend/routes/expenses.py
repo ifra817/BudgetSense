@@ -23,6 +23,7 @@ from models.expense import Expense, ExpenseItem
 
 expenses_bp = Blueprint("expenses", __name__, url_prefix="/api/expenses")
 TOKEN_SALT = "budgetsense-auth-token"
+TOKEN_MAX_AGE_SECONDS = 86400
 
 
 def _get_expenses_collection():
@@ -34,12 +35,12 @@ def _get_users_collection():
 
 
 def _get_token_serializer():
-    return URLSafeTimedSerializer(current_app.config.get("SECRET_KEY", "dev-secret-key-change-in-production"))
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
 
 
 def _decode_access_token(token):
     try:
-        payload = _get_token_serializer().loads(token, salt=TOKEN_SALT, max_age=86400)
+        payload = _get_token_serializer().loads(token, salt=TOKEN_SALT, max_age=TOKEN_MAX_AGE_SECONDS)
     except (BadSignature, SignatureExpired):
         return None
 
