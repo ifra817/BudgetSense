@@ -6,7 +6,7 @@ from flask import current_app, request
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 TOKEN_SALT = "budgetsense-auth-token"
-TOKEN_MAX_AGE_SECONDS_ONE_DAY = 86400
+TOKEN_MAX_AGE_SECONDS = 86400
 
 
 def _get_token_serializer():
@@ -22,7 +22,7 @@ def decode_access_token(token):
         payload = _get_token_serializer().loads(
             token,
             salt=TOKEN_SALT,
-            max_age=TOKEN_MAX_AGE_SECONDS_ONE_DAY,
+            max_age=TOKEN_MAX_AGE_SECONDS,
         )
     except (BadSignature, SignatureExpired):
         return None

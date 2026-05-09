@@ -89,10 +89,7 @@ def _parse_items(items_data):
 def _calculate_total_amount(items):
     total = 0
     for item in items:
-        if isinstance(item, ExpenseItem):
-            total += item.get_total()
-        elif isinstance(item, dict):
-            total += item.get("quantity", 1) * item.get("price", 0)
+        total += item.get_total()
     return round(total, 2)
 
 

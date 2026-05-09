@@ -15,6 +15,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 from routes.auth import auth_bp  # noqa: E402
 from routes.expenses import expenses_bp  # noqa: E402
 from models.user import User  # noqa: E402
+from utils.auth import TOKEN_SALT  # noqa: E402
 
 
 class ApiRoutesTestCase(unittest.TestCase):
@@ -29,7 +30,7 @@ class ApiRoutesTestCase(unittest.TestCase):
     def _auth_header(self, user_id):
         token = URLSafeTimedSerializer("test-secret-key").dumps(
             {"user_id": str(user_id)},
-            salt="budgetsense-auth-token",
+            salt=TOKEN_SALT,
         )
         return {"Authorization": f"Bearer {token}"}
 
@@ -71,7 +72,7 @@ class ApiRoutesTestCase(unittest.TestCase):
         body = response.get_json()
         token_payload = URLSafeTimedSerializer("test-secret-key").loads(
             body["auth"]["access_token"],
-            salt="budgetsense-auth-token",
+            salt=TOKEN_SALT,
         )
         self.assertEqual(token_payload["user_id"], str(existing_user._id))
 
