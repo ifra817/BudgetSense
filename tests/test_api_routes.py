@@ -1,5 +1,6 @@
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -137,6 +138,7 @@ class ApiRoutesTestCase(unittest.TestCase):
         user_id = ObjectId()
         expense_id = ObjectId()
         users.find_one.return_value = {"_id": user_id, "name": "Alice"}
+        now = datetime.utcnow()
 
         expenses.count_documents.return_value = 1
 
@@ -152,12 +154,12 @@ class ApiRoutesTestCase(unittest.TestCase):
                     "title": "Groceries",
                     "category": "Food",
                     "items": [{"name": "Milk", "quantity": 1, "price": 5}],
-                    "date": User("t", "t@t.com", "password123").created_at,
+                    "date": now,
                     "total_amount": 5,
                     "receipt_image": None,
                     "notes": None,
-                    "created_at": User("t", "t@t.com", "password123").created_at,
-                    "updated_at": User("t", "t@t.com", "password123").updated_at,
+                    "created_at": now,
+                    "updated_at": now,
                 }
             ]
         )
