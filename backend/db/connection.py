@@ -116,10 +116,6 @@ def init_db(app=None):
     """
     mongodb.connect()
     
-    if app:
-        @app.teardown_appcontext
-        def close_db(error):
-            mongodb.close_connection()
 
 def get_db():
     """Get database instance - use this in your routes"""

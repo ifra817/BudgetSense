@@ -62,6 +62,28 @@ class ExpenseAggregations:
         
         result = list(expenses.aggregate(pipeline))
         return result[0] if result else {'total': 0, 'count': 0}
+
+    @staticmethod
+    def get_monthly_trend(user_id, months=6):
+        """Spending total per month over last N months"""
+        expenses = get_collection('expenses')
+        cutoff = datetime.utcnow() - timedelta(days=months * 30)
+        
+        pipeline = [
+            {"$match": {
+                "user_id": ObjectId(user_id),
+                "date": {"$gte": cutoff}
+            }},
+            {"$group": {
+                "_id": {
+                    "year": {"$year": "$date"},
+                    "month": {"$month": "$date"}
+                },
+                "total": {"$sum": "$total_amount"}
+            }},
+            {"$sort": {"_id.year": 1, "_id.month": 1}}
+        ]
+        return list(expenses.aggregate(pipeline))
     
     @staticmethod
     def get_category_breakdown(user_id, year, month):

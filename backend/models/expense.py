@@ -95,7 +95,7 @@ class Expense:
     ]
     
     def __init__(self, user_id, title, category, items=None, date=None, 
-                 receipt_image=None, notes=None, _id=None):
+                 receipt_image=None, notes=None, _id=None, total_amount=None):
         self._id = _id or ObjectId()
         self.user_id = ObjectId(user_id) if isinstance(user_id, str) else user_id
         self.title = title
@@ -107,8 +107,11 @@ class Expense:
         self.created_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
         
-        # Calculate total amount from items
-        self.total_amount = self._calculate_total()
+        # If total_amount is given directly, use it. Otherwise calculate from items.
+        if total_amount is not None:
+            self.total_amount = float(total_amount)
+        else:
+            self.total_amount = self._calculate_total()
     
     def _calculate_total(self):
         """Calculate total amount from items"""
@@ -226,21 +229,20 @@ class Expense:
         # Validate category
         if not self.category or len(self.category.strip()) < 2:
             return False, "Category is required"
-        
-        # Validate items
-        if not self.items or len(self.items) == 0:
-            return False, "At least one item is required"
-        
-        # Validate each item
+              
+        # Either items OR a direct total_amount must exist — not necessarily both
+        if not self.items and self.total_amount <= 0:
+            return False, "Either add items or enter a total amount"
+
+        # Only validate individual items if they actually exist
         for item in self.items:
             if isinstance(item, ExpenseItem):
                 is_valid, error = item.validate()
                 if not is_valid:
                     return False, error
-        
-        # Validate total amount
-        if self.total_amount <= 0:
-            return False, "Total amount must be greater than 0"
+                # Validate total amount
+                if self.total_amount <= 0:
+                    return False, "Total amount must be greater than 0"
         
         # Validate date
         if not self.date:
