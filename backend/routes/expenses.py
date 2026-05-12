@@ -40,7 +40,8 @@ def _get_current_user_id():
     if not ObjectId.is_valid(user_id):
         return None, (jsonify({"error": "Invalid user ID"}), 401)
 
-    user_object_id = ObjectId(user_id)
+    user_object_id = ObjectId(str(user_id))
+
     user_exists = _get_users_collection().find_one({"_id": user_object_id})
     if not user_exists:
         return None, (jsonify({"error": "User not found"}), 404)
@@ -74,6 +75,9 @@ def _parse_items(items_data):
             return None, "Each item must be an object"
 
         name = item_data.get("name")
+        if not name:
+            return None, "Item name is required"
+        name = str(name) 
         quantity = item_data.get("quantity", 1)
         price = item_data.get("price", 0)
 
@@ -84,7 +88,6 @@ def _parse_items(items_data):
         items.append(item)
 
     return items, None
-
 
 def _calculate_total_amount(items):
     total = 0
@@ -236,6 +239,18 @@ def create_expense():
     if date_error:
         return jsonify({"error": date_error}), 400
 
+    total_amount_direct = data.get("total_amount")
+    items = []
+
+    if items_data:
+        # Mode A: receipt with item breakdown
+        items, items_error = _parse_items(items_data)
+        if items_error:
+            return jsonify({"error": items_error}), 400
+    elif total_amount_direct is None:
+        # Neither items nor total_amount provided
+        return jsonify({"error": "Provide either items[] or a total_amount"}), 400
+
     expense = Expense(
         user_id=user_id,
         title=title,
@@ -244,6 +259,7 @@ def create_expense():
         date=expense_date or datetime.utcnow(),
         receipt_image=receipt_image,
         notes=notes,
+        total_amount=float(total_amount_direct) if total_amount_direct and not items else None
     )
 
     is_valid, validation_error = expense.validate()
@@ -301,13 +317,14 @@ def update_expense(expense_id):
         if date_error:
             return jsonify({"error": date_error}), 400
         expense.date = parsed_date
+
     if "items" in data:
         items, items_error = _parse_items(data.get("items"))
         if items_error:
             return jsonify({"error": items_error}), 400
         expense.items = items
+        expense.total_amount = _calculate_total_amount(expense.items)
 
-    expense.total_amount = _calculate_total_amount(expense.items)
     expense.updated_at = datetime.utcnow()
 
     is_valid, validation_error = expense.validate()

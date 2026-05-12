@@ -18,7 +18,7 @@ def init_database():
     
     try:
         client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
-        db = client['budgetsense']
+        db = client['BudgetSenseDB']
         
         print("\n" + "="*70)
         print("🔄 Initializing BudgetSense Database Indexes")
