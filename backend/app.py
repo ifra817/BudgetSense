@@ -3,9 +3,7 @@ BudgetSense Flask Application
 Main application entry point
 """
 
-from fileinput import filename
-
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, render_template
 from flask_cors import CORS
 import logging
 import os
@@ -31,7 +29,10 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'development')
     
-    app = Flask(__name__)
+    # Pointing template_folder to the 'frontend' directory which is outside the 'backend' folder
+    template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+    
+    app = Flask(__name__, template_folder=template_dir)
     
     # Load config
     if config_name == 'production':
@@ -51,12 +52,25 @@ def create_app(config_name=None):
     from db.connection import init_db, get_db
     init_db(app)
     
-    # Register blueprints (routes)
+    # --- Blueprints (API Routes) ---
     from routes.auth import auth_bp
     from routes.expenses import expenses_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(expenses_bp)
+
+    # --- Frontend View Routes ---
+    @app.route('/')
+    def index():
+        """Serve the dashboard as the landing page"""
+        return render_template('dashboard.html')
+
+    @app.route('/add-expense')
+    def add_expense_page():
+        """Serve the Add Expense HTML page"""
+        return render_template('add_expense.html')
+
+    # --- Utility Routes ---
     @app.route('/uploads/<filename>')
     def serve_upload(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -85,7 +99,7 @@ def create_app(config_name=None):
                 'message': str(e)
             }), 500
     
-    logger.info("✅ Flask application initialized successfully")
+    logger.info(f"✅ Flask application initialized with templates at: {template_dir}")
     return app
 
 
