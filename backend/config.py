@@ -8,7 +8,10 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     DEBUG = os.getenv('FLASK_DEBUG', True)
     MONGO_URI = os.getenv('MONGO_URI')
-    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
+    UPLOAD_FOLDER = os.getenv(
+        'UPLOAD_FOLDER',
+        os.path.join(os.path.dirname(__file__), 'uploads')  # always backend/uploads/
+    )
     MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))
 
 class DevelopmentConfig(Config):

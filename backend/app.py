@@ -3,7 +3,9 @@ BudgetSense Flask Application
 Main application entry point
 """
 
-from flask import Flask, jsonify
+from fileinput import filename
+
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 import logging
 import os
@@ -55,7 +57,10 @@ def create_app(config_name=None):
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(expenses_bp)
-    
+    @app.route('/uploads/<filename>')
+    def serve_upload(filename):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])
     def health_check():
