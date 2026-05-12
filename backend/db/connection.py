@@ -53,7 +53,7 @@ class MongoDBConnection:
             self._client.admin.command('ping')
             
             # Get database instance
-            self._db = self._client['budgetsense']
+            self._db = self._client['BudgetSenseDB']
             
             logger.info("✅ Successfully connected to MongoDB Atlas")
             return True
