@@ -3,6 +3,7 @@ Expense Model
 Demonstrates: Embedded documents, nested arrays, data validation
 """
 from datetime import datetime, timezone
+from typing import Optional, List
 from bson import ObjectId
 
 
@@ -21,10 +22,10 @@ class ExpenseItem:
         ]
     """
 
-    def __init__(self, name: str, quantity=1, price=0):
-        self.name     = str(name).strip()
-        self.quantity = int(quantity) if quantity else 1
-        self.price    = float(price) if price else 0.0
+    def __init__(self, name: str, quantity: int = 1, price: float = 0.0):
+        self.name: str = str(name).strip()
+        self.quantity: int = int(quantity) if quantity else 1
+        self.price: float = float(price) if price else 0.0
 
     # ── helpers ───────────────────────────────
 
@@ -46,17 +47,17 @@ class ExpenseItem:
 
     def to_dict(self) -> dict:
         return {
-            "name":     self.name,
+            "name": self.name,
             "quantity": self.quantity,
-            "price":    self.price,
+            "price": self.price,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "ExpenseItem":
         return cls(
-            name     = data.get("name"),
-            quantity = data.get("quantity", 1),
-            price    = data.get("price", 0),
+            name=data.get("name", ""),
+            quantity=data.get("quantity", 1),
+            price=data.get("price", 0.0),
         )
 
     def __repr__(self):
@@ -124,35 +125,37 @@ class Expense:
     def __init__(
         self,
         user_id,
-        title:         str,
-        category:      str,
-        items:         list     = None,
-        date:          datetime = None,
-        receipt_image: str      = None,
-        notes:         str      = None,
-        _id                     = None,
-        total_amount:  float    = None,
-        created_at:    datetime = None,
-        updated_at:    datetime = None,
+        title: str,
+        category: str,
+        items: Optional[List[ExpenseItem]] = None,
+        date: Optional[datetime] = None,
+        receipt_image: Optional[str] = None,
+        notes: Optional[str] = None,
+        _id: Optional[ObjectId] = None,
+        total_amount: Optional[float] = None,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
     ):
-        self._id    = _id or ObjectId()
-        self.user_id = ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
+        self._id: ObjectId = _id or ObjectId()
+        self.user_id: ObjectId = (
+            ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
+        )
 
-        self.title         = str(title).strip()
-        self.category      = category
-        self.items         = items or []          # list of ExpenseItem objects
-        self.date          = date or datetime.now(timezone.utc)
-        self.receipt_image = receipt_image        # e.g. "uploads/uuid_receipt.jpg"
-        self.notes         = notes
+        self.title: str = str(title).strip()
+        self.category: str = category
+        self.items: List[ExpenseItem] = items if items is not None else []
+        self.date: datetime = date or datetime.now(timezone.utc)
+        self.receipt_image: Optional[str] = receipt_image
+        self.notes: Optional[str] = notes
 
         # total_amount: use explicit value when given, otherwise sum items
         if total_amount is not None:
-            self.total_amount = round(float(total_amount), 2)
+            self.total_amount: float = round(float(total_amount), 2)
         else:
             self.total_amount = self._calculate_total()
 
-        self.created_at = created_at or datetime.now(timezone.utc)
-        self.updated_at = updated_at or datetime.now(timezone.utc)
+        self.created_at: datetime = created_at or datetime.now(timezone.utc)
+        self.updated_at: datetime = updated_at or datetime.now(timezone.utc)
 
     # ── computed ──────────────────────────────
 
@@ -173,7 +176,7 @@ class Expense:
 
     # ── item mutation helpers ─────────────────
 
-    def add_item(self, name: str, quantity=1, price=0):
+    def add_item(self, name: str, quantity: int = 1, price: float = 0.0):
         """Append a validated ExpenseItem and recalculate total."""
         item = ExpenseItem(name, quantity, price)
         is_valid, error = item.validate()
@@ -235,17 +238,17 @@ class Expense:
             for item in self.items
         ]
         return {
-            "_id":           self._id,
-            "user_id":       self.user_id,
-            "title":         self.title,
-            "category":      self.category,
-            "total_amount":  self.total_amount,
-            "date":          self.date,
-            "items":         items_list,
+            "_id": self._id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "category": self.category,
+            "total_amount": self.total_amount,
+            "date": self.date,
+            "items": items_list,
             "receipt_image": self.receipt_image,
-            "notes":         self.notes,
-            "created_at":    self.created_at,
-            "updated_at":    self.updated_at,
+            "notes": self.notes,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
         }
 
     def to_dict_public(self) -> dict:
@@ -258,41 +261,44 @@ class Expense:
             for item in self.items
         ]
         return {
-            "_id":           str(self._id),
-            "user_id":       str(self.user_id),
-            "title":         self.title,
-            "category":      self.category,
-            "total_amount":  self.total_amount,
-            "date":          self.date.isoformat() if self.date else None,
-            "items":         items_list,
+            "_id": str(self._id),
+            "user_id": str(self.user_id),
+            "title": self.title,
+            "category": self.category,
+            "total_amount": self.total_amount,
+            "date": self.date.isoformat() if self.date else None,
+            "items": items_list,
             "receipt_image": self.receipt_image,
-            "notes":         self.notes,
-            "created_at":    self.created_at.isoformat() if self.created_at else None,
-            "updated_at":    self.updated_at.isoformat() if self.updated_at else None,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Expense":
+    def from_dict(cls, data: Optional[dict]) -> "Expense":
         """
         Reconstruct an Expense from a raw MongoDB document.
         Uses .get() with defaults for schema-flexible fields so documents
         created before 'notes', 'receipt_image', or 'updated_at' was added
         still load without errors.
         """
+        if data is None:
+            raise ValueError("Cannot create Expense from None")
+
         items = [ExpenseItem.from_dict(i) for i in data.get("items", [])]
 
         expense = cls(
-            _id           = data.get("_id"),
-            user_id       = data["user_id"],
-            title         = data["title"],
-            category      = data["category"],
-            total_amount  = data.get("total_amount"),
-            date          = data.get("date"),
-            items         = items,
-            receipt_image = data.get("receipt_image"),
-            notes         = data.get("notes"),
-            created_at    = data.get("created_at"),
-            updated_at    = data.get("updated_at"),
+            _id=data.get("_id"),
+            user_id=data["user_id"],
+            title=data["title"],
+            category=data["category"],
+            total_amount=data.get("total_amount"),
+            date=data.get("date"),
+            items=items,
+            receipt_image=data.get("receipt_image"),
+            notes=data.get("notes"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
         )
         return expense
 
@@ -338,34 +344,36 @@ class Budget:
     def __init__(
         self,
         user_id,
-        category:   str,
-        limit:      float,
-        _id               = None,
-        created_at: datetime = None,
+        category: str,
+        limit: float,
+        _id: Optional[ObjectId] = None,
+        created_at: Optional[datetime] = None,
     ):
-        self._id        = _id or ObjectId()
-        self.user_id    = ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
-        self.category   = str(category).strip()
-        self.limit      = round(float(limit), 2)
-        self.created_at = created_at or datetime.now(timezone.utc)
+        self._id: ObjectId = _id or ObjectId()
+        self.user_id: ObjectId = (
+            ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
+        )
+        self.category: str = str(category).strip()
+        self.limit: float = round(float(limit), 2)
+        self.created_at: datetime = created_at or datetime.now(timezone.utc)
 
     def to_dict(self) -> dict:
         return {
-            "_id":        self._id,
-            "user_id":    self.user_id,
-            "category":   self.category,
-            "limit":      self.limit,
+            "_id": self._id,
+            "user_id": self.user_id,
+            "category": self.category,
+            "limit": self.limit,
             "created_at": self.created_at,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Budget":
         return cls(
-            _id        = data.get("_id"),
-            user_id    = data["user_id"],
-            category   = data["category"],
-            limit      = data["limit"],
-            created_at = data.get("created_at"),
+            _id=data.get("_id"),
+            user_id=data["user_id"],
+            category=data["category"],
+            limit=data["limit"],
+            created_at=data.get("created_at"),
         )
 
     def __repr__(self):
