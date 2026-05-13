@@ -133,7 +133,7 @@ def get_expenses():
 
     category = (request.args.get("category") or "").strip()
     if category:
-        query["category"] = category
+        query["category"] = category # type: ignore
 
     amount_filter = {}
     min_amount = request.args.get("min_amount")
@@ -146,7 +146,8 @@ def get_expenses():
     except (TypeError, ValueError):
         return jsonify({"error": "min_amount and max_amount must be numbers"}), 400
     if amount_filter:
-        query["total_amount"] = amount_filter
+        query["total_amount"] = amount_filter # type: ignore
+
 
     start_date, start_error = _parse_datetime(request.args.get("start_date"), "start_date")
     if start_error:
@@ -157,7 +158,7 @@ def get_expenses():
         return jsonify({"error": end_error}), 400
 
     if start_date or end_date:
-        query["date"] = {}
+        query["date"] = {} # type: ignore
         if start_date:
             query["date"]["$gte"] = start_date
         if end_date:
