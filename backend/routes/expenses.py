@@ -179,7 +179,7 @@ def get_expenses():
         )
 
     if amount_filter:
-    query["total_amount"] = amount_filter  # type: ignore
+        query["total_amount"] = amount_filter  # type: ignore
 
 
 
