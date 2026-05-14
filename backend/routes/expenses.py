@@ -177,8 +177,11 @@ def get_expenses():
             jsonify({"error": "min_amount and max_amount must be numbers"}),
             400,
         )
+
     if amount_filter:
-        query["total_amount"] = amount_filter
+    query["total_amount"] = amount_filter  # type: ignore
+
+
 
     start_date, start_error = _parse_datetime(request.args.get("start_date"), "start_date")
     if start_error:
@@ -189,11 +192,12 @@ def get_expenses():
         return jsonify({"error": end_error}), 400
 
     if start_date or end_date:
-        query["date"] = {}
+        date_filter: dict = {}
         if start_date:
-            query["date"]["$gte"] = start_date
+            date_filter["$gte"] = start_date
         if end_date:
-            query["date"]["$lte"] = end_date
+            date_filter["$lte"] = end_date
+        query["date"] = date_filter  # type: ignore
 
     col = _get_expenses_collection()
     total = col.count_documents(query)
@@ -322,11 +326,13 @@ def create_expense():
             receipt_image = upload_result["filepath"]
 
     # ── Parse items ───────────────────────────────────────────────────────
-    items: List[ExpenseItem] = []
+    items: Optional[List[ExpenseItem]] = []
+
     if is_multipart:
-        items, items_error = _parse_items_multipart(form)
+        parsed_items, items_error = _parse_items_multipart(form)
         if items_error:
             return jsonify({"error": items_error, "field": "items"}), 400
+        items = parsed_items if not items_error else []
     elif items_data:
         items, items_error = _parse_items_json(items_data)
         if items_error:
@@ -418,22 +424,24 @@ def update_expense(expense_id: str):
         parsed_date, date_error = _parse_datetime(source["date"], "date")
         if date_error:
             return jsonify({"error": date_error}), 400
-        expense.date = parsed_date
+        if parsed_date is not None:
+            expense.date = parsed_date
 
     # Items update
     if is_multipart:
-        new_items, items_error = _parse_items_multipart(form)
+        parsed_items, items_error = _parse_items_multipart(form)
         if items_error:
             return jsonify({"error": items_error, "field": "items"}), 400
-        if new_items:
-            expense.items = new_items
-            expense.total_amount = _calculate_total_amount(new_items)
+        if parsed_items:
+            expense.items = parsed_items
+            expense.total_amount = _calculate_total_amount(parsed_items)
     elif "items" in data:
-        new_items, items_error = _parse_items_json(data["items"])
+        parsed_items, items_error = _parse_items_json(data["items"])
         if items_error:
             return jsonify({"error": items_error}), 400
-        expense.items = new_items
-        expense.total_amount = _calculate_total_amount(new_items)
+        if parsed_items is not None:
+            expense.items = parsed_items
+            expense.total_amount = _calculate_total_amount(parsed_items)
     elif "total_amount" in source:
         expense.total_amount = float(source["total_amount"])
 

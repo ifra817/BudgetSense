@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from backend.models.expense import Expense
 from db.connection import get_db
 from bson.objectid import ObjectId
 
@@ -28,6 +29,9 @@ def get_filtered_history():
 
     # Optimization: Sort by date descending (latest first) [cite: 50, 101]
     # Yeh query aapke banaye huye indexes ko use karegi
-    expenses = list(db.expenses.find(query).sort("date", -1))
+
+
+    expenses = [Expense.from_dict(e).to_dict_public() for e in cursor]
+    return jsonify({"expenses": expenses})
 
     return jsonify(expenses)

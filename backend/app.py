@@ -59,6 +59,9 @@ def create_app(config_name=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(expenses_bp)
 
+    from routes.budgets import budgets_bp
+    app.register_blueprint(budgets_bp)
+
     # --- Frontend View Routes ---
     @app.route('/')
     def index():
