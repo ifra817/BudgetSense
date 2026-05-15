@@ -313,6 +313,7 @@ class Expense:
         """Allow any non-empty category (built-in or custom)."""
         return bool(category and len(category.strip()) > 0)
 
+
     def __repr__(self):
         return (
             f"Expense(_id={self._id}, title={self.title!r}, "

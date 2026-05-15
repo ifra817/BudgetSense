@@ -62,6 +62,9 @@ def create_app(config_name=None):
     from routes.budgets import budgets_bp
     app.register_blueprint(budgets_bp)
 
+    from routes.analytics import analytics_bp
+    app.register_blueprint(analytics_bp)
+
     # --- Frontend View Routes ---
     @app.route('/')
     def index():

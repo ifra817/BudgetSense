@@ -54,6 +54,12 @@ class MongoDBConnection:
             
             # Get database instance
             self._db = self._client['BudgetSenseDB']
+
+            # Create indexes
+            users_col = self._db['users']            
+            # Create the correct unique index on email
+            users_col.create_index('email', unique=True, sparse=True)
+            logger.info("✅ Created unique index on email field")                        
             
             logger.info("✅ Successfully connected to MongoDB Atlas")
             return True

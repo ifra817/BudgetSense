@@ -202,6 +202,67 @@ def create_budget():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  GET /api/budgets/check-exceeded  — Check which budgets are exceeded
+# ─────────────────────────────────────────────────────────────────────────────
+
+@budgets_bp.route("/check-exceeded", methods=["GET"])
+def check_exceeded_budgets():
+    """
+    Check which budgets are exceeded for a user.
+    Query params: user_id*
+    Returns: List of exceeded budgets with warning levels
+    """
+    user_id, error_response = _get_user_id(request.args)
+    if error_response:
+        return error_response
+
+    try:
+        col = _get_budgets_collection()
+        budgets_data = list(col.find({"user_id": user_id}))
+
+        exceeded_budgets = []
+        warning_budgets = []
+        safe_budgets = []
+
+        for b_data in budgets_data:
+            budget = Budget.from_dict(b_data)
+            status = budget.get_warning_level()
+            budget_dict = budget.to_dict_public()
+
+            if status == "danger":
+                exceeded_budgets.append(budget_dict)
+            elif status == "warning":
+                warning_budgets.append(budget_dict)
+            else:
+                safe_budgets.append(budget_dict)
+
+        return (
+            jsonify(
+                {
+                    "exceeded": exceeded_budgets,
+                    "warning": warning_budgets,
+                    "safe": safe_budgets,
+                    "summary": {
+                        "total_budgets": len(budgets_data),
+                        "exceeded_count": len(exceeded_budgets),
+                        "warning_count": len(warning_budgets),
+                        "safe_count": len(safe_budgets),
+                    },
+                }
+            ),
+            200,
+        )
+
+    except Exception as exc:
+        current_app.logger.error(f"Failed to check exceeded budgets: {exc}")
+        return (
+            jsonify(
+                {"error": "Server error. Could not check exceeded budgets."}
+            ),
+            500,
+        )
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  PUT /api/budgets/<budget_id>  — Update budget
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -340,64 +401,3 @@ def delete_budget(budget_id: str):
         )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  GET /api/budgets/check-exceeded  — Check which budgets are exceeded
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-@budgets_bp.route("/check-exceeded", methods=["GET"])
-def check_exceeded_budgets():
-    """
-    Check which budgets are exceeded for a user.
-    Query params: user_id*
-    Returns: List of exceeded budgets with warning levels
-    """
-    user_id, error_response = _get_user_id(request.args)
-    if error_response:
-        return error_response
-
-    try:
-        col = _get_budgets_collection()
-        budgets_data = list(col.find({"user_id": user_id}))
-
-        exceeded_budgets = []
-        warning_budgets = []
-        safe_budgets = []
-
-        for b_data in budgets_data:
-            budget = Budget.from_dict(b_data)
-            status = budget.get_warning_level()
-            budget_dict = budget.to_dict_public()
-
-            if status == "danger":
-                exceeded_budgets.append(budget_dict)
-            elif status == "warning":
-                warning_budgets.append(budget_dict)
-            else:
-                safe_budgets.append(budget_dict)
-
-        return (
-            jsonify(
-                {
-                    "exceeded": exceeded_budgets,
-                    "warning": warning_budgets,
-                    "safe": safe_budgets,
-                    "summary": {
-                        "total_budgets": len(budgets_data),
-                        "exceeded_count": len(exceeded_budgets),
-                        "warning_count": len(warning_budgets),
-                        "safe_count": len(safe_budgets),
-                    },
-                }
-            ),
-            200,
-        )
-
-    except Exception as exc:
-        current_app.logger.error(f"Failed to check exceeded budgets: {exc}")
-        return (
-            jsonify(
-                {"error": "Server error. Could not check exceeded budgets."}
-            ),
-            500,
-        )

@@ -6,14 +6,20 @@ import os
 from datetime import datetime, timedelta
 from flask import request
 
-# Direct import - no conflicts
-import jwt  # type: ignore
+try:
+    import jwt
+except ImportError:
+    print("ERROR: PyJWT not installed. Run: pip install PyJWT")
+    raise
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-
+    
 def generate_access_token(user_id):
     """Generate JWT access token for user."""
+    print(f"DEBUG: Generating token for user_id: {user_id}")
+    print(f"DEBUG: Using SECRET_KEY: {SECRET_KEY[:10]}...")
+    
     payload = {
         'user_id': str(user_id),
         'iat': datetime.utcnow(),
@@ -21,15 +27,21 @@ def generate_access_token(user_id):
     }
     
     try:
-        return jwt.encode(payload, SECRET_KEY, algorithm='HS256')  # type: ignore
-    except Exception:
+        # PyJWT 2.12.1 returns string directly
+        token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+        print(f"✅ Token generated successfully: {str(token)[:20]}...")
+        return token
+    except Exception as e:
+        print(f"❌ Error generating token: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
 def verify_token(token):
     """Verify JWT token and extract user_id."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])  # type: ignore
+        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         return payload.get('user_id'), None
     except jwt.ExpiredSignatureError:  # type: ignore
         return None, "Token has expired"
