@@ -399,5 +399,3 @@ def delete_budget(budget_id: str):
             jsonify({"error": "Server error. Could not delete budget."}),
             500,
         )
-
-

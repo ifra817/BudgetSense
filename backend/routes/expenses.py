@@ -24,7 +24,8 @@ from bson.errors import InvalidId
 from flask import Blueprint, jsonify, request, current_app
 
 from db.connection import get_db, get_collection
-from models.expense import Expense, ExpenseItem, Budget
+from models.expense import Expense, ExpenseItem
+from models.budget import Budget
 from utils.validators import validate_budget_data
 from utils.helpers import save_receipt_image, delete_receipt_image, parse_items_from_form
 
@@ -181,8 +182,6 @@ def get_expenses():
     if amount_filter:
         query["total_amount"] = amount_filter  # type: ignore
 
-
-
     start_date, start_error = _parse_datetime(request.args.get("start_date"), "start_date")
     if start_error:
         return jsonify({"error": start_error}), 400
@@ -279,6 +278,9 @@ def create_expense():
     """
     is_multipart = request.content_type and "multipart/form-data" in request.content_type
 
+    receipt_image = None  # ← Initialize here!
+    items_data = None  # ← Initialize here!
+
     if is_multipart:
         form = request.form
         user_id, error_response = _get_user_id(form)
@@ -289,7 +291,6 @@ def create_expense():
         notes = form.get("notes")
         total_amount_direct = form.get("total_amount")
         raw_date = form.get("date")
-        items_data = None
     else:
         data = request.get_json(silent=True) or {}
         user_id, error_response = _get_user_id(data)
@@ -300,8 +301,8 @@ def create_expense():
         notes = data.get("notes")
         total_amount_direct = data.get("total_amount")
         raw_date = data.get("date")
-        receipt_image = data.get("receipt_image")
-        items_data = data.get("items")
+        receipt_image = data.get("receipt_image")  # ← Only in JSON
+        items_data = data.get("items")  # ← Only in JSON
 
     if not title or not category:
         return jsonify({"error": "title and category are required"}), 400
@@ -311,7 +312,6 @@ def create_expense():
         return jsonify({"error": date_error}), 400
 
     # ── Handle receipt upload FIRST ───────────────────────────────────────
-    receipt_image = None
     if is_multipart:
         uploaded_file = request.files.get("receipt")
         if uploaded_file and uploaded_file.filename:
@@ -326,7 +326,7 @@ def create_expense():
             receipt_image = upload_result["filepath"]
 
     # ── Parse items ───────────────────────────────────────────────────────
-    items: Optional[List[ExpenseItem]] = []
+    items: List[ExpenseItem] = []
 
     if is_multipart:
         parsed_items, items_error = _parse_items_multipart(form)
@@ -334,9 +334,10 @@ def create_expense():
             return jsonify({"error": items_error, "field": "items"}), 400
         items = parsed_items if not items_error else []
     elif items_data:
-        items, items_error = _parse_items_json(items_data)
+        parsed_items, items_error = _parse_items_json(items_data)
         if items_error:
             return jsonify({"error": items_error}), 400
+        items = parsed_items if parsed_items else []
 
     if not items and total_amount_direct is None:
         return (
@@ -565,8 +566,8 @@ def create_budget():
     )
 
     try:
-        db = get_db()
-        result = db[Budget.COLLECTION].insert_one(budget.to_dict())
+        col = get_collection("budgets")  # ← Use get_collection instead!
+        result = col.insert_one(budget.to_dict())
         return (
             jsonify(
                 {

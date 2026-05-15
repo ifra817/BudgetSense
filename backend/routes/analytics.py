@@ -22,7 +22,7 @@ from bson import ObjectId
 from flask import Blueprint, jsonify, request, current_app
 
 from db.connection import get_collection
-from models.expense import Expense, Budget
+from models.expense import Expense
 from models.budget import Budget
 
 analytics_bp = Blueprint("analytics", __name__, url_prefix="/api/analytics")
