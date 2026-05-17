@@ -68,19 +68,39 @@ def create_app(config_name=None):
     # --- Frontend View Routes ---
     @app.route('/')
     def index():
-        """Serve the dashboard as the landing page"""
+        """Serve the landing page"""
+        return render_template('index.html')
+
+    @app.route('/dashboard')
+    def dashboard_page():
+        """Serve the Dashboard HTML page"""
         return render_template('dashboard.html')
+
+    @app.route('/login')
+    def login_page():
+        """Serve the Login HTML page"""
+        return render_template('login.html')
+
+    @app.route('/register')
+    def register_page():
+        """Serve the Register HTML page"""
+        return render_template('register.html')
+
+    @app.route('/history')
+    def history_page():
+        """Serve the History HTML page"""
+        return render_template('history.html')
+
+    @app.route('/budget-settings')
+    def budget_settings_page():
+        """Serve the Budget Settings HTML page"""
+        return render_template('budget_settings.html')
 
     @app.route('/add-expense')
     def add_expense_page():
         """Serve the Add Expense HTML page"""
         return render_template('add_expense.html')
-
-    # --- Utility Routes ---
-    @app.route('/uploads/<filename>')
-    def serve_upload(filename):
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
+    
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])
     def health_check():
