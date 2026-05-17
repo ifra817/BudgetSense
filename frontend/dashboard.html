@@ -14,8 +14,8 @@
             --budget-purple: #7047EB;       
             --budget-purple-hover: #5A35C5; 
             --budget-bg-light: #F8F9FA;     
-            --budget-danger: #ff4d4f;       /* For alerts */
-            --budget-success: #28a745;      /* For remaining budget */
+            --budget-danger: #ff4d4f;       
+            --budget-success: #28a745;      
         }
         
         body {
@@ -23,13 +23,11 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* Navbar Color */
         .navbar {
             background-color: var(--budget-purple) !important;
             box-shadow: 0 4px 12px rgba(112, 71, 235, 0.1);
         }
 
-        /* Data Cards Styling */
         .card {
             border-radius: 12px;
             border: none;
@@ -40,12 +38,10 @@
             transform: translateY(-5px);
         }
 
-        /* Card Icons/Text */
         .text-primary-custom {
             color: var(--budget-purple);
         }
         
-        /* Alert Styling */
         .alert-danger {
             background-color: #fff1f0;
             border-color: var(--budget-danger);
@@ -88,25 +84,25 @@
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Total Spent</h6>
-                    <h3 class="fw-bold text-primary-custom">Rs. 23,000</h3>
+                    <h3 id="total-spent" class="fw-bold text-primary-custom">Rs. 23,000</h3>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Remaining Budget</h6>
-                    <h3 class="fw-bold" style="color: var(--budget-success);">Rs. 57,000</h3>
+                    <h3 id="remaining-budget" class="fw-bold" style="color: var(--budget-success);">Rs. 57,000</h3>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Receipts Scanned</h6>
-                    <h3 class="fw-bold text-dark">14</h3>
+                    <h3 id="receipts-count" class="fw-bold text-dark">14</h3>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Top Category</h6>
-                    <h3 class="fw-bold text-danger">Food</h3>
+                    <h3 id="top-category" class="fw-bold text-danger">Food</h3>
                 </div>
             </div>
         </div>
@@ -138,35 +134,73 @@
         </div>
 
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+        
     <script>
+        // 1. Chart initialization (Multi-colored graph restored)
         const ctx = document.getElementById('expenseChart').getContext('2d');
-        const expenseChart = new Chart(ctx, {
-            type: 'bar', // You can change this to 'doughnut' if you prefer
+        let expenseChart = new Chart(ctx, {
+            type: 'bar',
             data: {
                 labels: ['Food', 'Shopping', 'Transport', 'Bills', 'Entertainment'],
                 datasets: [{
                     label: 'Spent Amount (Rs.)',
                     data: [12000, 8000, 3000, 5000, 2000],
                     backgroundColor: [
-                        '#7047EB', // Our Theme Purple
-                        '#ff6b6b',
-                        '#4ecdc4',
-                        '#feca57',
-                        '#ff9ff3'
+                        '#7047EB', // Purple (Food)
+                        '#ff6b6b', // Red/Pink (Shopping)
+                        '#4ecdc4', // Teal (Transport)
+                        '#feca57', // Yellow (Bills)
+                        '#ff9ff3'  // Pink (Entertainment)
                     ],
                     borderRadius: 5
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { display: false }
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { display: false } },
+                    x: { grid: { display: false } }
                 }
             }
         });
+
+        // 2. Fetch API function to get data from Ifra's backend
+        async function loadDashboardData() {
+            try {
+                // Ifra ke endpoint se data mangwana
+               const response = await fetch('/api/dashboard?user_id=60d5ec49f1b2c8b1f8e4e1a1');
+                
+                // Agar local server pe chal raha hai aur API nahi mili, toh error ignore karein
+                if (!response.ok) return; 
+                
+                const data = await response.json();
+
+                // 3. Update the UI Cards with Real Data
+                document.getElementById('total-spent').innerText = `Rs. ${data.total_spent}`;
+                document.getElementById('remaining-budget').innerText = `Rs. ${data.remaining_budget}`;
+                document.getElementById('receipts-count').innerText = data.receipts_scanned;
+                document.getElementById('top-category').innerText = data.top_category;
+
+                // 4. Update the Chart with Real Data
+                expenseChart.data.labels = data.chart_labels; 
+                expenseChart.data.datasets[0].data = data.chart_values; 
+                
+                // Agar backend se colorful array aati hai toh wo set karein, warna purani use karein
+                if (data.chart_colors) {
+                    expenseChart.data.datasets[0].backgroundColor = data.chart_colors;
+                }
+                
+                expenseChart.update();
+
+            } catch (error) {
+                console.log('Running dummy UI. Backend fetch failed (which is normal on Live Server):', error);
+            }
+        }
+
+        // Jab page load ho toh data update karne ki koshish kare
+        window.onload = loadDashboardData;
     </script>
 </body>
 </html>
