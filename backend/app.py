@@ -91,7 +91,7 @@ def create_app(config_name=None):
         """Serve the History HTML page"""
         return render_template('history.html')
 
-    @app.route('/budget-settings')
+    @app.route('/budgets')
     def budget_settings_page():
         """Serve the Budget Settings HTML page"""
         return render_template('budget_settings.html')
