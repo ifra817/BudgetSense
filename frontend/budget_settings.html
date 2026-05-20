@@ -77,12 +77,12 @@
                 <div class="card p-4">
                     <h5 class="fw-bold mb-3">Monthly Income</h5>
                     <p class="text-muted small">Set your total income to calculate remaining balance.</p>
-                    <form>
+                    <form id="income-form">
                         <div class="mb-3">
                             <label class="form-label">Total Monthly Income (Rs.)</label>
-                            <input type="number" class="form-control form-control-lg" placeholder="e.g. 80000" value="80000">
+                            <input type="number" id="monthly-income" class="form-control form-control-lg" placeholder="Loading..." required>
                         </div>
-                        <button type="button" class="btn btn-primary w-100 fw-bold">Update Income</button>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">Update Income</button>
                     </form>
                 </div>
             </div>
@@ -91,41 +91,12 @@
                 <div class="card p-4">
                     <h5 class="fw-bold mb-4">Category Limits</h5>
                     
-                    <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
-                        <div class="d-flex align-items-center">
-                            <div class="budget-icon">🍔</div>
-                            <div>
-                                <h6 class="mb-0 fw-bold">Food & Dining</h6>
-                                <small class="text-muted">Limit: Rs. 15,000</small>
-                            </div>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm px-3">Edit</button>
-                    </div>
-
-                    <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
-                        <div class="d-flex align-items-center">
-                            <div class="budget-icon">🚗</div>
-                            <div>
-                                <h6 class="mb-0 fw-bold">Transport</h6>
-                                <small class="text-muted">Limit: Rs. 5,000</small>
-                            </div>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm px-3">Edit</button>
-                    </div>
-
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div class="d-flex align-items-center">
-                            <div class="budget-icon">🛍️</div>
-                            <div>
-                                <h6 class="mb-0 fw-bold">Shopping</h6>
-                                <small class="text-muted">Limit: Rs. 10,000</small>
-                            </div>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm px-3">Edit</button>
+                    <div id="category-limits-container">
+                        <p class="text-muted text-center py-3">Loading category budgets...</p>
                     </div>
 
                     <div class="mt-4">
-                        <button class="btn btn-primary w-100 fw-bold">+ Add New Category Budget</button>
+                        <button type="button" class="btn btn-primary w-100 fw-bold" onclick="promptAddNewCategory()">+ Add New Category Budget</button>
                     </div>
                 </div>
             </div>
@@ -133,5 +104,130 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Category icons mapper based on name
+        const categoryIcons = {
+            'Food': '🍔',
+            'Transport': '🚗',
+            'Shopping': '🛍️',
+            'Bills': '💵',
+            'Entertainment': '🎬'
+        };
+
+        // 1. Page load par data fetch karna
+        async function loadBudgetData() {
+            const userId = localStorage.getItem('user_id');
+            if (!userId) {
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/budget?user_id=${userId}`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+
+                // Income input field value set karna
+                document.getElementById('monthly-income').value = data.monthly_income || 0;
+
+                // Category limits list populate karna
+                const container = document.getElementById('category-limits-container');
+                container.innerHTML = '';
+
+                if (data.categories && data.categories.length > 0) {
+                    data.categories.forEach(cat => {
+                        const icon = categoryIcons[cat.name] || '💰';
+                        container.innerHTML += `
+                            <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                                <div class="d-flex align-items-center">
+                                    <div class="budget-icon">${icon}</div>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold">${cat.name}</h6>
+                                        <small class="text-muted">Limit: Rs. ${Number(cat.limit).toLocaleString()}</small>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm px-3" onclick="editCategoryLimit('${cat.name}', ${cat.limit})">Edit</button>
+                            </div>
+                        `;
+                    });
+                } else {
+                    container.innerHTML = `<p class="text-muted text-center py-3">No category budgets set yet.</p>`;
+                }
+
+            } catch (error) {
+                console.error('Error loading budget settings:', error);
+            }
+        }
+
+        // 2. Total Income Form Submit handler
+        document.getElementById('income-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const userId = localStorage.getItem('user_id');
+            const incomeValue = document.getElementById('monthly-income').value;
+
+            try {
+                const response = await fetch('/api/budget/update_income', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, monthly_income: Number(incomeValue) })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('Income updated successfully!');
+                    loadBudgetData(); // Refresh page data
+                } else {
+                    alert(data.message || 'Failed to update income.');
+                }
+            } catch (error) {
+                console.error('Error updating income:', error);
+            }
+        });
+
+        // 3. Category Edit Handler
+        async function editCategoryLimit(categoryName, currentLimit) {
+            const newLimit = prompt(`Enter new budget limit for ${categoryName}:`, currentLimit);
+            if (newLimit === null || newLimit === '') return;
+
+            await saveCategoryBudget(categoryName, Number(newLimit));
+        }
+
+        // 4. New Category Add Prompt
+        async function promptAddNewCategory() {
+            const categoryName = prompt("Enter category name (e.g., Bills, Entertainment):");
+            if (!categoryName) return;
+            const limit = prompt(`Enter budget limit for ${categoryName}:`);
+            if (!limit) return;
+
+            await saveCategoryBudget(categoryName, Number(limit));
+        }
+
+        // 5. Shared function to hit API for category updates
+        async function saveCategoryBudget(name, limit) {
+            const userId = localStorage.getItem('user_id');
+            try {
+                const response = await fetch('/api/budget/update_category', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, category_name: name, limit: limit })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('Category budget updated successfully!');
+                    loadBudgetData();
+                } else {
+                    alert(data.message || 'Failed to save category limit.');
+                }
+            } catch (error) {
+                console.error('Error updating category limit:', error);
+            }
+        }
+
+        // Initialize view on load
+        window.onload = loadBudgetData;
+    </script>
 </body>
 </html>
