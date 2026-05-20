@@ -73,8 +73,8 @@
 
     <div class="container">
         
-        <div class="alert alert-danger alert-dismissible fade show fw-bold" role="alert">
-            ⚠️ Alert: You have exceeded your Food budget by Rs. 2,000!
+        <div id="budget-alert" class="alert alert-danger alert-dismissible fade show fw-bold d-none" role="alert">
+            <span id="alert-message">⚠️ Alert: You have exceeded your budget!</span>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
 
@@ -84,25 +84,25 @@
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Total Spent</h6>
-                    <h3 id="total-spent" class="fw-bold text-primary-custom">Rs. 23,000</h3>
+                    <h3 id="total-spent" class="fw-bold text-primary-custom">Rs. 0</h3>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Remaining Budget</h6>
-                    <h3 id="remaining-budget" class="fw-bold" style="color: var(--budget-success);">Rs. 57,000</h3>
+                    <h3 id="remaining-budget" class="fw-bold" style="color: var(--budget-success);">Rs. 0</h3>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Receipts Scanned</h6>
-                    <h3 id="receipts-count" class="fw-bold text-dark">14</h3>
+                    <h3 id="receipts-count" class="fw-bold text-dark">0</h3>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
                     <h6 class="text-muted text-uppercase fw-bold mb-1">Top Category</h6>
-                    <h3 id="top-category" class="fw-bold text-danger">Food</h3>
+                    <h3 id="top-category" class="fw-bold text-danger">-</h3>
                 </div>
             </div>
         </div>
@@ -118,16 +118,8 @@
             <div class="col-md-4 mb-4">
                 <div class="card p-4 h-100">
                     <h5 class="fw-bold mb-4">Recent Expenses</h5>
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                            Grocery Shopping <span class="badge bg-primary rounded-pill" style="background-color: var(--budget-purple)!important;">Rs. 2500</span>
-                        </li>
-                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                            Uber Ride <span class="badge bg-primary rounded-pill" style="background-color: var(--budget-purple)!important;">Rs. 800</span>
-                        </li>
-                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                            Restaurant Bill <span class="badge bg-primary rounded-pill" style="background-color: var(--budget-purple)!important;">Rs. 4500</span>
-                        </li>
+                    <ul id="recent-expenses-list" class="list-group list-group-flush">
+                        <li class="text-muted text-center py-3">Loading recent expenses...</li>
                     </ul>
                 </div>
             </div>
@@ -136,7 +128,7 @@
     </div>
         
     <script>
-        // 1. Chart initialization (Multi-colored graph restored)
+        // 1. Chart initialization
         const ctx = document.getElementById('expenseChart').getContext('2d');
         let expenseChart = new Chart(ctx, {
             type: 'bar',
@@ -144,14 +136,8 @@
                 labels: ['Food', 'Shopping', 'Transport', 'Bills', 'Entertainment'],
                 datasets: [{
                     label: 'Spent Amount (Rs.)',
-                    data: [12000, 8000, 3000, 5000, 2000],
-                    backgroundColor: [
-                        '#7047EB', // Purple (Food)
-                        '#ff6b6b', // Red/Pink (Shopping)
-                        '#4ecdc4', // Teal (Transport)
-                        '#feca57', // Yellow (Bills)
-                        '#ff9ff3'  // Pink (Entertainment)
-                    ],
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: ['#7047EB', '#ff6b6b', '#4ecdc4', '#feca57', '#ff9ff3'],
                     borderRadius: 5
                 }]
             },
@@ -166,40 +152,71 @@
             }
         });
 
-        // 2. Fetch API function to get data from Ifra's backend
+        // 2. Fetch API function to get data dynamically
         async function loadDashboardData() {
+            // LocalStorage se actual logged-in user_id uthana
+            const userId = localStorage.getItem('user_id');
+            
+            if (!userId) {
+                console.log("User ID nahi mili, redirecting to login...");
+                window.location.href = '/login';
+                return;
+            }
+
             try {
-                // Ifra ke endpoint se data mangwana
-               const response = await fetch('/api/dashboard?user_id=60d5ec49f1b2c8b1f8e4e1a1');
+                // Live logged-in User ID query parameter mein append kar di
+                const response = await fetch(`/api/dashboard?user_id=${userId}`);
                 
-                // Agar local server pe chal raha hai aur API nahi mili, toh error ignore karein
                 if (!response.ok) return; 
                 
                 const data = await response.json();
 
-                // 3. Update the UI Cards with Real Data
-                document.getElementById('total-spent').innerText = `Rs. ${data.total_spent}`;
-                document.getElementById('remaining-budget').innerText = `Rs. ${data.remaining_budget}`;
+                // 3. Update UI Cards with Live Data
+                document.getElementById('total-spent').innerText = `Rs. ${data.total_spent.toLocaleString()}`;
+                document.getElementById('remaining-budget').innerText = `Rs. ${data.remaining_budget.toLocaleString()}`;
                 document.getElementById('receipts-count').innerText = data.receipts_scanned;
-                document.getElementById('top-category').innerText = data.top_category;
+                document.getElementById('top-category').innerText = data.top_category || 'None';
 
-                // 4. Update the Chart with Real Data
-                expenseChart.data.labels = data.chart_labels; 
-                expenseChart.data.datasets[0].data = data.chart_values; 
-                
-                // Agar backend se colorful array aati hai toh wo set karein, warna purani use karein
-                if (data.chart_colors) {
-                    expenseChart.data.datasets[0].backgroundColor = data.chart_colors;
+                // 4. Update Chart Values dynamically
+                if (data.chart_labels && data.chart_values) {
+                    expenseChart.data.labels = data.chart_labels; 
+                    expenseChart.data.datasets[0].data = data.chart_values; 
+                    if (data.chart_colors) {
+                        expenseChart.data.datasets[0].backgroundColor = data.chart_colors;
+                    }
+                    expenseChart.update();
                 }
-                
-                expenseChart.update();
+
+                // 5. Dynamic Recent Expenses Rendering
+                const expensesList = document.getElementById('recent-expenses-list');
+                expensesList.innerHTML = ''; // Pehle se maujood raw clean karein
+
+                if (data.recent_expenses && data.recent_expenses.length > 0) {
+                    data.recent_expenses.forEach(exp => {
+                        expensesList.innerHTML += `
+                            <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                ${exp.title} 
+                                <span class="badge bg-primary rounded-pill" style="background-color: var(--budget-purple)!important;">
+                                    Rs. ${exp.amount}
+                                </span>
+                            </li>
+                        `;
+                    });
+                } else {
+                    expensesList.innerHTML = `<li class="text-muted text-center py-3">No recent expenses found.</li>`;
+                }
+
+                // 6. Dynamic Budget Alert Control
+                if (data.budget_exceeded && data.exceeded_message) {
+                    document.getElementById('alert-message').innerText = `⚠️ ${data.exceeded_message}`;
+                    document.getElementById('budget-alert').classList.remove('d-none');
+                }
 
             } catch (error) {
-                console.log('Running dummy UI. Backend fetch failed (which is normal on Live Server):', error);
+                console.log('Error loading dynamic dashboard data:', error);
             }
         }
 
-        // Jab page load ho toh data update karne ki koshish kare
         window.onload = loadDashboardData;
     </script>
 </body>
