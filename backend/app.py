@@ -96,7 +96,7 @@ def create_app(config_name=None):
         """Serve the Budget Settings HTML page"""
         return render_template('budget_settings.html')
 
-    @app.route('/add-expense')
+    @app.route('/add_expense')
     def add_expense_page():
         """Serve the Add Expense HTML page"""
         return render_template('add_expense.html')
