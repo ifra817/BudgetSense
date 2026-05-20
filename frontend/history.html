@@ -66,7 +66,7 @@
                 <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="/history">History</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/budget_settings">Budgets</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/budgets">Budgets</a></li>
                     <li class="nav-item ms-lg-3">
                         <a href="/login" class="btn btn-sm btn-outline-light px-3 fw-bold" style="border-radius: 20px;">Logout</a>
                     </li>
@@ -123,16 +123,7 @@
                     </thead>
                     <tbody id="history-table-body">
                         <tr>
-                            <td class="px-4 py-3 text-muted">08 May, 2026</td>
-                            <td class="py-3 fw-bold">Grocery Shopping</td>
-                            <td class="py-3"><span class="badge badge-category rounded-pill px-3 py-2">Food</span></td>
-                            <td class="text-end px-4 py-3 fw-bold">2,500</td>
-                        </tr>
-                        <tr>
-                            <td class="px-4 py-3 text-muted">05 May, 2026</td>
-                            <td class="py-3 fw-bold">Uber Ride to Uni</td>
-                            <td class="py-3"><span class="badge badge-category rounded-pill px-3 py-2">Transport</span></td>
-                            <td class="text-end px-4 py-3 fw-bold">800</td>
+                            <td colspan="4" class="text-center py-4 text-muted">Loading transactions...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -143,16 +134,21 @@
 
     <script>
         async function fetchFilteredHistory() {
+            // FIXED: LocalStorage se live user_id uthana
+            const userId = localStorage.getItem('user_id');
+            
+            if (!userId) {
+                console.log("User ID nahi mili, redirecting to login...");
+                window.location.href = '/login';
+                return;
+            }
+
             // Frontend inputs se values uthana
             const category = document.getElementById('category-filter').value;
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
             
-            // Dummy User ID for now
-            const userId = '60d5ec49f1b2c8b1f8e4e1a1'; 
-
-            // API URL bananay ka tareeqa (Ifra ke endpoint ke mutabiq)
-            // Example: /api/history?user_id=123&category=Food&start_date=2026-05-01
+            // Dynamic URL generation
             let url = `/api/history?user_id=${userId}`;
             
             if (category && category !== "All Categories") {
@@ -166,17 +162,14 @@
             }
 
             try {
-                // Backend se data fetch karna
                 const response = await fetch(url);
-                if (!response.ok) return; // Agar live server pe hain aur API nahi chal rahi, toh ignore karein
+                if (!response.ok) return; 
 
                 const expenses = await response.json();
                 const tableBody = document.getElementById('history-table-body');
                 
-                // Puraana dummy data table se clear kar dein
                 tableBody.innerHTML = ''; 
 
-                // Agar koi record na milay
                 if (expenses.length === 0) {
                     tableBody.innerHTML = `
                         <tr>
@@ -186,27 +179,27 @@
                     return;
                 }
 
-                // Database se aaye huye array ko table mein loop kar ke daalna
+                // Live dynamic list data inject karna
                 expenses.forEach(exp => {
+                    // Agar backend data formatted nahi deta toh toLocaleString use kar sakte hain numbers k liye
+                    const formattedAmount = Number(exp.amount).toLocaleString();
+                    
                     tableBody.innerHTML += `
                         <tr>
                             <td class="px-4 py-3 text-muted">${exp.date}</td>
                             <td class="py-3 fw-bold">${exp.title}</td>
                             <td class="py-3"><span class="badge badge-category rounded-pill px-3 py-2">${exp.category}</span></td>
-                            <td class="text-end px-4 py-3 fw-bold">${exp.amount}</td>
+                            <td class="text-end px-4 py-3 fw-bold">${formattedAmount}</td>
                         </tr>
                     `;
                 });
 
             } catch (error) {
-                console.log("Running dummy UI. Backend fetch failed:", error);
+                console.log("Error fetching live history data:", error);
             }
         }
 
-        // Jab user 'Apply Filters' button press kare toh function chalay
         document.getElementById('apply-filters-btn').addEventListener('click', fetchFilteredHistory);
-
-        // Jab page load ho toh aik dafa saara history data load kar lay
         window.onload = fetchFilteredHistory;
     </script>
 </body>
