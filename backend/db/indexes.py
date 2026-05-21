@@ -1,20 +1,23 @@
-# from db.connection import get_db
+from pymongo import ASCENDING, DESCENDING
+from db.connection import get_collection
 
-# def create_project_indexes():
-#     """
-#     Haleema's Task: Creating indexes to optimize filtering and searching.
-#     Demonstrates: Advanced DB Query Optimization.
-#     """
-#     db = get_db()
-    
-#     # user_id par index: Taake specific user ka data foran mil jaye [cite: 48, 52]
-#     db.expenses.create_index([("user_id", 1)])
-    
-#     # Compound Index on date and category: 
-#     # Taake history page ke filters (Date range aur Category) fast kaam karein [cite: 49, 50, 51]
-#     db.expenses.create_index([("date", -1), ("category", 1)])
-    
-#     print("✅ MongoDB Indexes created successfully!")
+def create_indexes():
+    """Create all necessary MongoDB indexes"""
+    try:
+        users = get_collection("users")
+        expenses = get_collection("expenses")
+        budgets = get_collection("budgets")
 
-# if __name__ == "__main__":
-#     create_project_indexes()
+        # 1. User Indexes (Ensure emails are unique)
+        users.create_index([("email", ASCENDING)], unique=True)
+
+        # 2. Expense Indexes (Optimized for Haleema's date & category filters)
+        expenses.create_index([("user_id", ASCENDING), ("date", DESCENDING)])
+        expenses.create_index([("user_id", ASCENDING), ("category", ASCENDING)])
+        
+        # 3. Budget Indexes (Ensure one budget per category per user)
+        budgets.create_index([("user_id", ASCENDING), ("category", ASCENDING)], unique=True)
+
+        print("✅ MongoDB Indexes created successfully.")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not create indexes: {e}")

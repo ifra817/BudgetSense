@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - BudgetSense</title>
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
         :root {
             --budget-purple: #7047EB;       
@@ -17,41 +14,15 @@
             --budget-danger: #ff4d4f;       
             --budget-success: #28a745;      
         }
-        
-        body {
-            background-color: var(--budget-bg-light);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .navbar {
-            background-color: var(--budget-purple) !important;
-            box-shadow: 0 4px 12px rgba(112, 71, 235, 0.1);
-        }
-
-        .card {
-            border-radius: 12px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-            transition: transform 0.2s;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-        }
-
-        .text-primary-custom {
-            color: var(--budget-purple);
-        }
-        
-        .alert-danger {
-            background-color: #fff1f0;
-            border-color: var(--budget-danger);
-            color: var(--budget-danger);
-            border-radius: 8px;
-        }
+        body { background-color: var(--budget-bg-light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background-color: var(--budget-purple) !important; box-shadow: 0 4px 12px rgba(112, 71, 235, 0.1); }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.04); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .text-primary-custom { color: var(--budget-purple); }
+        .alert-danger { background-color: #fff1f0; border-color: var(--budget-danger); color: var(--budget-danger); border-radius: 8px; }
     </style>
 </head>
 <body>
-
    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
     <div class="container">
         <a class="navbar-brand fw-bold" href="#">BudgetSense</a>
@@ -72,7 +43,6 @@
 </nav>
 
     <div class="container">
-        
         <div id="budget-alert" class="alert alert-danger alert-dismissible fade show fw-bold d-none" role="alert">
             <span id="alert-message">⚠️ Alert: You have exceeded your budget!</span>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -89,13 +59,13 @@
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
-                    <h6 class="text-muted text-uppercase fw-bold mb-1">Remaining Budget</h6>
-                    <h3 id="remaining-budget" class="fw-bold" style="color: var(--budget-success);">Rs. 0</h3>
+                    <h6 class="text-muted text-uppercase fw-bold mb-1">Exceeded Budgets</h6>
+                    <h3 id="remaining-budget" class="fw-bold" style="color: var(--budget-danger);">0</h3>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="card p-3">
-                    <h6 class="text-muted text-uppercase fw-bold mb-1">Receipts Scanned</h6>
+                    <h6 class="text-muted text-uppercase fw-bold mb-1">Total Expenses</h6>
                     <h3 id="receipts-count" class="fw-bold text-dark">0</h3>
                 </div>
             </div>
@@ -114,7 +84,6 @@
                     <canvas id="expenseChart" height="100"></canvas>
                 </div>
             </div>
-            
             <div class="col-md-4 mb-4">
                 <div class="card p-4 h-100">
                     <h5 class="fw-bold mb-4">Recent Expenses</h5>
@@ -124,19 +93,17 @@
                 </div>
             </div>
         </div>
-
     </div>
         
     <script>
-        // 1. Chart initialization
         const ctx = document.getElementById('expenseChart').getContext('2d');
         let expenseChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Food', 'Shopping', 'Transport', 'Bills', 'Entertainment'],
+                labels: [],
                 datasets: [{
                     label: 'Spent Amount (Rs.)',
-                    data: [0, 0, 0, 0, 0],
+                    data: [],
                     backgroundColor: ['#7047EB', '#ff6b6b', '#4ecdc4', '#feca57', '#ff9ff3'],
                     borderRadius: 5
                 }]
@@ -145,59 +112,52 @@
                 responsive: true,
                 maintainAspectRatio: true,
                 plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { display: false } },
-                    x: { grid: { display: false } }
-                }
+                scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }
             }
         });
 
-        // 2. Fetch API function to get data dynamically
         async function loadDashboardData() {
-            // LocalStorage se actual logged-in user_id uthana
             const userId = localStorage.getItem('user_id');
-            
             if (!userId) {
-                console.log("User ID nahi mili, redirecting to login...");
                 window.location.href = '/login';
                 return;
             }
 
             try {
-                // Live logged-in User ID query parameter mein append kar di
-                const response = await fetch(`/api/dashboard?user_id=${userId}`);
+                // Fetch the correct analytics dashboard route
+                const dashResponse = await fetch(`/api/analytics/dashboard?user_id=${userId}`);
+                // Fetch recent history for the sidebar list
+                const histResponse = await fetch(`/api/analytics/history?user_id=${userId}&per_page=5`);
                 
-                if (!response.ok) return; 
+                if (!dashResponse.ok || !histResponse.ok) return; 
                 
-                const data = await response.json();
+                const dashData = await dashResponse.json();
+                const histData = await histResponse.json();
+                const dashboard = dashData.dashboard;
 
-                // 3. Update UI Cards with Live Data
-                document.getElementById('total-spent').innerText = `Rs. ${data.total_spent.toLocaleString()}`;
-                document.getElementById('remaining-budget').innerText = `Rs. ${data.remaining_budget.toLocaleString()}`;
-                document.getElementById('receipts-count').innerText = data.receipts_scanned;
-                document.getElementById('top-category').innerText = data.top_category || 'None';
+                document.getElementById('total-spent').innerText = `Rs. ${dashboard.monthly_summary.total_spent.toLocaleString()}`;
+                document.getElementById('remaining-budget').innerText = dashboard.budget_status.exceeded_count;
+                document.getElementById('receipts-count').innerText = dashboard.monthly_summary.expense_count;
+                
+                const topCat = dashboard.top_categories.length > 0 ? dashboard.top_categories[0].category : 'None';
+                document.getElementById('top-category').innerText = topCat;
 
-                // 4. Update Chart Values dynamically
-                if (data.chart_labels && data.chart_values) {
-                    expenseChart.data.labels = data.chart_labels; 
-                    expenseChart.data.datasets[0].data = data.chart_values; 
-                    if (data.chart_colors) {
-                        expenseChart.data.datasets[0].backgroundColor = data.chart_colors;
-                    }
+                if (dashboard.top_categories.length > 0) {
+                    expenseChart.data.labels = dashboard.top_categories.map(c => c.category); 
+                    expenseChart.data.datasets[0].data = dashboard.top_categories.map(c => c.amount); 
                     expenseChart.update();
                 }
 
-                // 5. Dynamic Recent Expenses Rendering
                 const expensesList = document.getElementById('recent-expenses-list');
-                expensesList.innerHTML = ''; // Pehle se maujood raw clean karein
+                expensesList.innerHTML = ''; 
 
-                if (data.recent_expenses && data.recent_expenses.length > 0) {
-                    data.recent_expenses.forEach(exp => {
+                if (histData.expenses && histData.expenses.length > 0) {
+                    histData.expenses.forEach(exp => {
                         expensesList.innerHTML += `
                             <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
                                 ${exp.title} 
                                 <span class="badge bg-primary rounded-pill" style="background-color: var(--budget-purple)!important;">
-                                    Rs. ${exp.amount}
+                                    Rs. ${exp.total_amount}
                                 </span>
                             </li>
                         `;
@@ -206,9 +166,8 @@
                     expensesList.innerHTML = `<li class="text-muted text-center py-3">No recent expenses found.</li>`;
                 }
 
-                // 6. Dynamic Budget Alert Control
-                if (data.budget_exceeded && data.exceeded_message) {
-                    document.getElementById('alert-message').innerText = `⚠️ ${data.exceeded_message}`;
+                if (dashboard.budget_status.exceeded_count > 0) {
+                    document.getElementById('alert-message').innerText = `⚠️ You have exceeded ${dashboard.budget_status.exceeded_count} of your budgets!`;
                     document.getElementById('budget-alert').classList.remove('d-none');
                 }
 

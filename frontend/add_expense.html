@@ -699,8 +699,8 @@
 
             if (res.ok) {
                 showToast('Expense saved successfully!', 'success');
-                setTimeout(() => window.location.href = 'dashboard.html', 1500);
-            } else {
+                setTimeout(() => window.location.href = '/dashboard', 1500);
+            }else {
                 showToast(json.error || 'Something went wrong', 'error');
                 btnSubmit.disabled = false;
                 btnSubmit.textContent = 'Save expense';

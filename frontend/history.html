@@ -4,58 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense History - BudgetSense</title>
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
     <style>
-        :root {
-            --budget-purple: #7047EB;       
-            --budget-purple-hover: #5A35C5; 
-            --budget-bg-light: #F8F9FA;     
-        }
-        
-        body {
-            background-color: var(--budget-bg-light);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .navbar {
-            background-color: var(--budget-purple) !important;
-            box-shadow: 0 4px 12px rgba(112, 71, 235, 0.1);
-        }
-
-        .card {
-            border-radius: 12px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-        }
-
-        .btn-primary {
-            background-color: var(--budget-purple);
-            border-color: var(--budget-purple);
-        }
-        .btn-primary:hover {
-            background-color: var(--budget-purple-hover);
-            border-color: var(--budget-purple-hover);
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--budget-purple);
-            box-shadow: 0 0 0 0.25rem rgba(112, 71, 235, 0.25);
-        }
-
-        .table > :not(caption) > * > * {
-            vertical-align: middle;
-        }
-        .badge-category {
-            background-color: #e0d4fc;
-            color: var(--budget-purple);
-            font-weight: 600;
-        }
+        :root { --budget-purple: #7047EB; --budget-purple-hover: #5A35C5; --budget-bg-light: #F8F9FA; }
+        body { background-color: var(--budget-bg-light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background-color: var(--budget-purple) !important; box-shadow: 0 4px 12px rgba(112, 71, 235, 0.1); }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
+        .btn-primary { background-color: var(--budget-purple); border-color: var(--budget-purple); }
+        .btn-primary:hover { background-color: var(--budget-purple-hover); border-color: var(--budget-purple-hover); }
+        .badge-category { background-color: #e0d4fc; color: var(--budget-purple); font-weight: 600; }
     </style>
 </head>
 <body>
-
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
             <a class="navbar-brand fw-bold" href="#">BudgetSense</a>
@@ -76,7 +36,6 @@
     </nav>
 
     <div class="container">
-        
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold" style="color: #333;">Expense History</h3>
             <a href="/add_expense" class="btn btn-primary fw-bold">+ Add New</a>
@@ -92,7 +51,7 @@
                         <option value="Food">Food</option>
                         <option value="Transport">Transport</option>
                         <option value="Shopping">Shopping</option>
-                        <option value="Bills">Bills</option>
+                        <option value="Utilities">Utilities</option>
                         <option value="Entertainment">Entertainment</option>
                     </select>
                 </div>
@@ -129,64 +88,49 @@
                 </table>
             </div>
         </div>
-
     </div>
 
     <script>
         async function fetchFilteredHistory() {
-            // FIXED: LocalStorage se live user_id uthana
             const userId = localStorage.getItem('user_id');
-            
             if (!userId) {
-                console.log("User ID nahi mili, redirecting to login...");
                 window.location.href = '/login';
                 return;
             }
 
-            // Frontend inputs se values uthana
             const category = document.getElementById('category-filter').value;
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
             
-            // Dynamic URL generation
-            let url = `/api/history?user_id=${userId}`;
+            // Fixed the endpoint to point to analytics.py
+            let url = `/api/analytics/history?user_id=${userId}&per_page=50`;
             
-            if (category && category !== "All Categories") {
-                url += `&category=${category}`;
-            }
-            if (startDate) {
-                url += `&start_date=${startDate}`;
-            }
-            if (endDate) {
-                url += `&end_date=${endDate}`;
-            }
+            if (category && category !== "All Categories") url += `&category=${category}`;
+            if (startDate) url += `&start_date=${startDate}`;
+            if (endDate) url += `&end_date=${endDate}`;
 
             try {
                 const response = await fetch(url);
                 if (!response.ok) return; 
 
-                const expenses = await response.json();
+                const data = await response.json();
+                const expenses = data.expenses; // Extract array from paginated response
                 const tableBody = document.getElementById('history-table-body');
                 
                 tableBody.innerHTML = ''; 
 
-                if (expenses.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">No expenses found for these filters.</td>
-                        </tr>
-                    `;
+                if (!expenses || expenses.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">No expenses found.</td></tr>`;
                     return;
                 }
 
-                // Live dynamic list data inject karna
                 expenses.forEach(exp => {
-                    // Agar backend data formatted nahi deta toh toLocaleString use kar sakte hain numbers k liye
-                    const formattedAmount = Number(exp.amount).toLocaleString();
+                    const formattedAmount = Number(exp.total_amount).toLocaleString();
+                    const dateOnly = exp.date ? exp.date.substring(0, 10) : 'N/A';
                     
                     tableBody.innerHTML += `
                         <tr>
-                            <td class="px-4 py-3 text-muted">${exp.date}</td>
+                            <td class="px-4 py-3 text-muted">${dateOnly}</td>
                             <td class="py-3 fw-bold">${exp.title}</td>
                             <td class="py-3"><span class="badge badge-category rounded-pill px-3 py-2">${exp.category}</span></td>
                             <td class="text-end px-4 py-3 fw-bold">${formattedAmount}</td>

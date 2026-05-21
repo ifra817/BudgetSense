@@ -1,22 +1,3 @@
-"""
-backend/routes/expenses.py
-Merged: Ramlah Munir + Team Lead + Ifra
-
-Ownership:
-  Ramlah  — POST/PUT/DELETE (multipart + file upload), Budget routes
-  Lead    — GET (list/single), pagination, filtering
-  Ifra    — ExpenseItem model, validate(), to_dict_public()
-
-Supports:
-  ✅ user_id passed directly in request body / query params (no token auth)
-  ✅ multipart/form-data (text fields + receipt image upload)
-  ✅ application/json body
-  ✅ Paginated, filtered GET /api/expenses
-  ✅ Embedded items[] with quantity support
-  ✅ Receipt image stored to disk; old image deleted on update
-  ✅ Budget creation endpoint
-"""
-
 from datetime import datetime, timezone
 from typing import Optional, Tuple, Dict, Any, List
 from bson import ObjectId
@@ -30,11 +11,6 @@ from utils.validators import validate_budget_data
 from utils.helpers import save_receipt_image, delete_receipt_image, parse_items_from_form
 
 expenses_bp = Blueprint("expenses", __name__, url_prefix="/api/expenses")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  Internal helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 def _get_expenses_collection():
@@ -130,13 +106,6 @@ def _parse_items_multipart(form: Any) -> Tuple[List[ExpenseItem], Optional[str]]
 def _calculate_total_amount(items: List[ExpenseItem]) -> float:
     """Calculate total amount from items."""
     return round(sum(item.get_total() for item in items), 2)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  GET /api/expenses  — List expenses with pagination + filters
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 @expenses_bp.route("", methods=["GET"])
 def get_expenses():
     """
@@ -230,12 +199,6 @@ def get_expenses():
         200,
     )
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  GET /api/expenses/<expense_id>
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 @expenses_bp.route("/<expense_id>", methods=["GET"])
 def get_expense(expense_id: str):
     """Get one expense by ID. Pass user_id as a query param."""
@@ -258,11 +221,6 @@ def get_expense(expense_id: str):
         ),
         200,
     )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  POST /api/expenses  — Create expense
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 @expenses_bp.route("", methods=["POST"])
@@ -373,12 +331,6 @@ def create_expense():
         ),
         201,
     )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  PUT /api/expenses/<expense_id>  — Update expense
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 @expenses_bp.route("/<expense_id>", methods=["PUT"])
 def update_expense(expense_id: str):
@@ -496,12 +448,6 @@ def update_expense(expense_id: str):
         200,
     )
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  DELETE /api/expenses/<expense_id>
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 @expenses_bp.route("/<expense_id>", methods=["DELETE"])
 def delete_expense(expense_id: str):
     """
@@ -522,67 +468,10 @@ def delete_expense(expense_id: str):
     )
     if not existing:
         return jsonify({"error": "Expense not found"}), 404
-
     if existing.get("receipt_image"):
         delete_receipt_image(
             existing["receipt_image"],
             app=current_app,
         )
-
     col.delete_one({"_id": ObjectId(expense_id), "user_id": user_id})
     return jsonify({"message": "Expense deleted successfully."}), 200
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  POST /api/expenses/budgets  — Create budget (Ramlah owns)
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-@expenses_bp.route("/budgets", methods=["POST"])
-def create_budget():
-    """
-    Create a new budget for a category.
-    Accepts: application/json OR multipart/form-data
-    Fields: user_id*, category*, limit* (> 0)
-    """
-    data = request.get_json(silent=True) or request.form.to_dict()
-
-    validation = validate_budget_data(data)
-    if not validation["valid"]:
-        return (
-            jsonify(
-                {
-                    "error": validation["error"],
-                    "field": validation.get("field"),
-                }
-            ),
-            400,
-        )
-
-    budget = Budget(
-        user_id=data["user_id"],
-        category=data["category"],
-        limit=float(data["limit"]),
-    )
-
-    try:
-        col = get_collection("budgets")  # ← Use get_collection instead!
-        result = col.insert_one(budget.to_dict())
-        return (
-            jsonify(
-                {
-                    "message": "Budget created successfully.",
-                    "budget_id": str(result.inserted_id),
-                }
-            ),
-            201,
-        )
-
-    except Exception as exc:
-        current_app.logger.error(f"Failed to insert budget: {exc}")
-        return (
-            jsonify(
-                {"error": "Server error. Could not save budget."}
-            ),
-            500,
-        )
