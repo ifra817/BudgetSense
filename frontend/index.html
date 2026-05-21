@@ -3,24 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to BudgetSense</title>
+    <title>BudgetSense | Intelligent Finance</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        :root { --budget-purple: #7047EB; --budget-bg-light: #F8F9FA; }
-        body { background-color: var(--budget-bg-light); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .hero-section { text-align: center; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .btn-purple { background-color: var(--budget-purple); color: white; border-radius: 10px; padding: 12px 30px; font-weight: bold; }
-        .btn-purple:hover { background-color: #5A35C5; color: white; }
+        :root { 
+            --budget-purple: #7047EB; 
+            --budget-dark: #212529;
+            --budget-bg: #ffffff;
+        }
+        
+        body { 
+            font-family: 'DM Sans', sans-serif; 
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+            min-height: 100vh;
+        }
+
+        .hero-container {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .brand-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 4.5rem;
+            letter-spacing: -0.05em;
+            color: var(--budget-dark);
+            margin-bottom: 1.5rem;
+        }
+
+        .brand-title span { color: var(--budget-purple); }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: #6c757d;
+            max-width: 600px;
+            margin-bottom: 2.5rem;
+        }
+
+        .btn-main {
+            background-color: var(--budget-purple);
+            color: white;
+            padding: 14px 35px;
+            font-weight: 600;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .btn-main:hover {
+            background-color: #5A35C5;
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(112, 71, 235, 0.2);
+        }
+
+        .btn-sec {
+            background: transparent;
+            color: var(--budget-dark);
+            border: 2px solid #e9ecef;
+            padding: 14px 35px;
+            font-weight: 600;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .btn-sec:hover {
+            background: #f8f9fa;
+            border-color: #dee2e6;
+        }
+
+        .badge-pill {
+            background: rgba(112, 71, 235, 0.1);
+            color: var(--budget-purple);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
-    <div class="hero-section col-md-6">
-        <h1 class="fw-bold mb-3" style="color: var(--budget-purple);">BudgetSense</h1>
-        <p class="text-muted mb-5">Smart Receipt Scanning & Expense Tracking made simple.</p>
-        <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
-            <a href="/login" class="btn btn-purple btn-lg">Login</a>
-            <a href="/register" class="btn btn-outline-secondary btn-lg" style="border-radius: 10px;">Register</a>
+
+    <nav class="navbar navbar-expand-lg py-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-3" href="/">Budget<span>Sense</span></a>
         </div>
+    </nav>
+
+    <div class="container hero-container">
+        <div class="row w-100">
+            <div class="col-lg-6 d-flex flex-column justify-content-center">
+                <span class="badge-pill">The new standard in expense tracking</span>
+                <h1 class="brand-title">Take control of <span>your money.</span></h1>
+                <p class="hero-subtitle">
+                    Automated receipt scanning, real-time budget alerts, and beautiful analytics—designed for modern financial clarity.
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="/login" class="btn-main">Get Started</a>
+                    <a href="/register" class="btn-sec">Create Account</a>
+                </div>
+            </div>
+            </div>
     </div>
+
 </body>
 </html>
