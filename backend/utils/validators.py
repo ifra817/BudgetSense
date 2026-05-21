@@ -19,8 +19,9 @@ from bson import ObjectId
 # ─────────────────────────────────────────────
 
 VALID_CATEGORIES = [
-    "Food", "Transport", "Utilities", "Healthcare",
-    "Entertainment", "Education", "Shopping", "Other"
+    "Dining", "Education", "Entertainment", "Food", "Groceries",
+    "Healthcare", "Other", "Shopping", "Sports", "Transport",
+    "Travel", "Utilities"
 ]
 
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}

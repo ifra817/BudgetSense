@@ -27,6 +27,9 @@
                     <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
                     <li class="nav-item"><a class="nav-link active" href="/budgets">Budgets</a></li>
+                    <li class="nav-item ms-lg-3">
+                        <a href="/login" class="btn btn-sm btn-outline-light px-3 fw-bold" style="border-radius: 20px;" onclick="localStorage.clear()">Logout</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -55,16 +58,39 @@
                     <div id="category-limits-container">
                         <p class="text-muted text-center py-3">Loading category budgets...</p>
                     </div>
-                    <div class="mt-4">
-                        <button type="button" class="btn btn-primary w-100 fw-bold" onclick="promptAddNewCategory()">+ Add New Category Budget</button>
+                    
+                    <div id="add-budget-form" class="mt-4 p-3 bg-light rounded border d-none">
+                        <h6 class="fw-bold mb-3">Add New Limit</h6>
+                        <select id="new-category-select" class="form-select mb-2">
+                            <option value="" disabled selected>Select a Category...</option>
+                            <option value="Food">Food</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Dining">Dining</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Education">Education</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input type="number" id="new-limit-input" class="form-control mb-3" placeholder="Enter budget limit (Rs.)">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-primary w-100 fw-bold" onclick="saveNewCategory()">Save</button>
+                            <button class="btn btn-sm btn-outline-secondary w-100 fw-bold" onclick="toggleAddForm()">Cancel</button>
+                        </div>
                     </div>
+
+                    <button id="btn-show-add" type="button" class="btn btn-primary w-100 fw-bold mt-3" onclick="toggleAddForm()">+ Add New Category Budget</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        const categoryIcons = { 'Food': '🍔', 'Transport': '🚗', 'Shopping': '🛍️', 'Utilities': '💵', 'Entertainment': '🎬' };
+        const categoryIcons = { 'Food': '🍔', 'Groceries': '🛒', 'Dining': '🍽️', 'Transport': '🚗', 'Shopping': '🛍️', 'Utilities': '💡', 'Entertainment': '🎬', 'Healthcare': '🏥', 'Education': '📚', 'Sports': '⚽', 'Travel': '✈️', 'Other': '📦' };
 
         async function loadBudgetData() {
             const userId = localStorage.getItem('user_id');
@@ -72,7 +98,6 @@
             if (!userId || !token) { window.location.href = '/login'; return; }
 
             try {
-                // Fetch User Profile for Income
                 const profileRes = await fetch('/api/auth/profile', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -81,7 +106,6 @@
                     document.getElementById('monthly-income').value = profileData.user.monthly_income || 0;
                 }
 
-                // Fetch Category Budgets
                 const budgetRes = await fetch(`/api/budgets?user_id=${userId}`);
                 if (!budgetRes.ok) return;
                 const data = await budgetRes.json();
@@ -117,7 +141,6 @@
             const incomeValue = document.getElementById('monthly-income').value;
 
             try {
-                // Income uses the auth profile route
                 const response = await fetch('/api/auth/profile', {
                     method: 'PUT',
                     headers: { 
@@ -126,23 +149,24 @@
                     },
                     body: JSON.stringify({ monthly_income: Number(incomeValue) })
                 });
-
+                
+                const data = await response.json();
                 if (response.ok) {
                     alert('Income updated successfully!');
                     loadBudgetData(); 
                 } else {
-                    alert('Failed to update income.');
+                    // This will now show the exact backend error instead of failing silently!
+                    alert(data.error || 'Failed to update income. Token may be expired.');
                 }
             } catch (error) { console.error('Error:', error); }
         });
 
         async function editCategoryLimit(budgetId, categoryName, currentLimit) {
-            const newLimit = prompt(`Enter new budget limit for ${categoryName}:`, currentLimit);
-            if (newLimit === null || newLimit === '') return;
+            const newLimit = prompt(`Enter new limit for ${categoryName} (Numbers only):`, currentLimit);
+            if (newLimit === null || newLimit.trim() === '') return;
 
             const userId = localStorage.getItem('user_id');
             try {
-                // Updating an existing budget limit uses PUT /api/budgets/<budget_id>
                 const response = await fetch(`/api/budgets/${budgetId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -150,27 +174,46 @@
                 });
 
                 if (response.ok) { loadBudgetData(); } 
-                else { alert('Failed to update limit.'); }
+                else { 
+                    const data = await response.json();
+                    alert(data.error || 'Failed to update limit.'); 
+                }
             } catch (error) { console.error('Error:', error); }
         }
 
-        async function promptAddNewCategory() {
-            const categoryName = prompt("Enter category name (e.g., Utilities, Entertainment):");
-            if (!categoryName) return;
-            const limit = prompt(`Enter budget limit for ${categoryName}:`);
-            if (!limit) return;
+        function toggleAddForm() {
+            const form = document.getElementById('add-budget-form');
+            const btn = document.getElementById('btn-show-add');
+            if (form.classList.contains('d-none')) {
+                form.classList.remove('d-none');
+                btn.classList.add('d-none');
+            } else {
+                form.classList.add('d-none');
+                btn.classList.remove('d-none');
+                document.getElementById('new-category-select').value = "";
+                document.getElementById('new-limit-input').value = "";
+            }
+        }
+
+        async function saveNewCategory() {
+            const categoryName = document.getElementById('new-category-select').value;
+            const limit = document.getElementById('new-limit-input').value;
+
+            if (!categoryName) { alert("Please select a category."); return; }
+            if (!limit || Number(limit) <= 0) { alert("Please enter a valid limit greater than 0."); return; }
 
             const userId = localStorage.getItem('user_id');
             try {
-                // Creating a new budget uses POST /api/budgets
                 const response = await fetch('/api/budgets', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: userId, category: categoryName, limit: Number(limit) })
                 });
 
-                if (response.ok) { loadBudgetData(); } 
-                else { 
+                if (response.ok) { 
+                    toggleAddForm();
+                    loadBudgetData(); 
+                } else { 
                     const err = await response.json();
                     alert(err.error || 'Failed to create budget limit.'); 
                 }
