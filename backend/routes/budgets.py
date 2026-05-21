@@ -1,22 +1,3 @@
-"""
-backend/routes/budgets.py
-Ramlah's Task: Budget CRUD operations + Budget management
-
-Ownership:
-  Ramlah  — All budget routes (GET, POST, PUT, DELETE)
-  Lead    — Pagination, filtering
-  Ifra    — Budget model validation & serialization
-
-Supports:
-  ✅ Create budget for category
-  ✅ Get all budgets for user
-  ✅ Get single budget
-  ✅ Update budget limit
-  ✅ Delete budget
-  ✅ Check exceeded budgets
-  ✅ Get warning levels (safe/warning/danger)
-"""
-
 from datetime import datetime, timezone
 from typing import Optional, Tuple, Dict, Any
 from bson import ObjectId

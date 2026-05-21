@@ -13,6 +13,7 @@
         .btn-primary { background-color: var(--budget-purple); border-color: var(--budget-purple); }
         .btn-primary:hover { background-color: var(--budget-purple-hover); border-color: var(--budget-purple-hover); }
         .budget-icon { font-size: 1.5rem; color: var(--budget-purple); margin-right: 15px; }
+        .text-danger-custom { color: #dc3545 !important; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -54,7 +55,11 @@
 
             <div class="col-md-7 mb-4">
                 <div class="card p-4">
-                    <h5 class="fw-bold mb-4">Category Limits</h5>
+                    <h5 class="fw-bold mb-4">
+                        Category Limits
+                        <span id="allocation-status" class="fs-6 fw-normal float-end text-muted"></span>
+                    </h5>
+                    
                     <div id="category-limits-container">
                         <p class="text-muted text-center py-3">Loading category budgets...</p>
                     </div>
@@ -92,6 +97,10 @@
     <script>
         const categoryIcons = { 'Food': '🍔', 'Groceries': '🛒', 'Dining': '🍽️', 'Transport': '🚗', 'Shopping': '🛍️', 'Utilities': '💡', 'Entertainment': '🎬', 'Healthcare': '🏥', 'Education': '📚', 'Sports': '⚽', 'Travel': '✈️', 'Other': '📦' };
 
+        // Global variables to track income vs allocated budgets
+        let globalTotalIncome = 0;
+        let globalTotalAllocated = 0;
+
         async function loadBudgetData() {
             const userId = localStorage.getItem('user_id');
             const token = localStorage.getItem('access_token');
@@ -103,7 +112,8 @@
                 });
                 if (profileRes.ok) {
                     const profileData = await profileRes.json();
-                    document.getElementById('monthly-income').value = profileData.user.monthly_income || 0;
+                    globalTotalIncome = profileData.user.monthly_income || 0;
+                    document.getElementById('monthly-income').value = globalTotalIncome;
                 }
 
                 const budgetRes = await fetch(`/api/budgets?user_id=${userId}`);
@@ -112,9 +122,11 @@
 
                 const container = document.getElementById('category-limits-container');
                 container.innerHTML = '';
+                globalTotalAllocated = 0;
 
                 if (data.budgets && data.budgets.length > 0) {
                     data.budgets.forEach(cat => {
+                        globalTotalAllocated += Number(cat.limit);
                         const icon = categoryIcons[cat.category] || '💰';
                         container.innerHTML += `
                             <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
@@ -132,6 +144,20 @@
                 } else {
                     container.innerHTML = `<p class="text-muted text-center py-3">No category budgets set yet.</p>`;
                 }
+
+                // Update the visual allocation tracker
+                const statusText = document.getElementById('allocation-status');
+                if (globalTotalIncome > 0) {
+                    statusText.innerHTML = `Allocated: <strong>Rs. ${globalTotalAllocated.toLocaleString()}</strong> / Rs. ${globalTotalIncome.toLocaleString()}`;
+                    if (globalTotalAllocated > globalTotalIncome) {
+                        statusText.classList.add('text-danger-custom');
+                    } else {
+                        statusText.classList.remove('text-danger-custom');
+                    }
+                } else {
+                    statusText.innerText = 'Please set your income first.';
+                }
+
             } catch (error) { console.error('Error:', error); }
         }
 
@@ -155,7 +181,6 @@
                     alert('Income updated successfully!');
                     loadBudgetData(); 
                 } else {
-                    // This will now show the exact backend error instead of failing silently!
                     alert(data.error || 'Failed to update income. Token may be expired.');
                 }
             } catch (error) { console.error('Error:', error); }
@@ -164,13 +189,23 @@
         async function editCategoryLimit(budgetId, categoryName, currentLimit) {
             const newLimit = prompt(`Enter new limit for ${categoryName} (Numbers only):`, currentLimit);
             if (newLimit === null || newLimit.trim() === '') return;
+            const limitNum = Number(newLimit);
+
+            // VALIDATION: Check if editing this pushes them over their total income
+            if (globalTotalIncome > 0) {
+                const newTotal = globalTotalAllocated - currentLimit + limitNum;
+                if (newTotal > globalTotalIncome) {
+                    alert(`Cannot update: This exceeds your monthly income. You only have Rs. ${(globalTotalIncome - (globalTotalAllocated - currentLimit)).toLocaleString()} left to allocate to this category.`);
+                    return;
+                }
+            }
 
             const userId = localStorage.getItem('user_id');
             try {
                 const response = await fetch(`/api/budgets/${budgetId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: userId, limit: Number(newLimit) })
+                    body: JSON.stringify({ user_id: userId, limit: limitNum })
                 });
 
                 if (response.ok) { loadBudgetData(); } 
@@ -202,12 +237,24 @@
             if (!categoryName) { alert("Please select a category."); return; }
             if (!limit || Number(limit) <= 0) { alert("Please enter a valid limit greater than 0."); return; }
 
+            const limitNum = Number(limit);
+
+            // VALIDATION: Check if adding this pushes them over their total income
+            if (globalTotalIncome <= 0) {
+                alert("Please set your Monthly Income first before adding category limits.");
+                return;
+            }
+            if (globalTotalAllocated + limitNum > globalTotalIncome) {
+                alert(`Cannot add budget: This exceeds your monthly income. You only have Rs. ${(globalTotalIncome - globalTotalAllocated).toLocaleString()} left to allocate.`);
+                return;
+            }
+
             const userId = localStorage.getItem('user_id');
             try {
                 const response = await fetch('/api/budgets', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: userId, category: categoryName, limit: Number(limit) })
+                    body: JSON.stringify({ user_id: userId, category: categoryName, limit: limitNum })
                 });
 
                 if (response.ok) { 
